@@ -16,7 +16,7 @@ bool available() { return false; }
 bool load(Yacht &, bool &hasGame) { hasGame = false; return false; }
 bool store(const Yacht &, bool) { return false; }
 #else
-static const uint32_t MAGIC = 0x52434843u;       // "CHYD"
+static const uint32_t MAGIC = 0x44594843u;       // "CHYD" (until 2026-10-01 0x52434843, CHCraps' "CHCR")
 static const uint8_t VERSION = 1;
 static const uint32_t PAGE = 256;
 static const uint32_t PAGE_A = 0xF500, PAGE_B = 0xF600;   // metadata page is 0xF700

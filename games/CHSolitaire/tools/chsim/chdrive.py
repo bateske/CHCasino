@@ -3,7 +3,7 @@
     python chdrive.py --sim <sketch dir> <script> <outdir>
     python chdrive.py --device [--port COMx] <script> <outdir>
 
---id names the game's handshake reply (default CHSL, CHSolitaire).
+--id names the game's handshake reply (default CHSO, CHSolitaire).
 
 Both targets speak the same serial debug protocol (see the sketch's
 src/debug/Debug.h), so one script produces comparable screenshots from each.
@@ -125,7 +125,7 @@ class SerialTransport:
 
 
 class Driver:
-    def __init__(self, t, ident="CHSL"):
+    def __init__(self, t, ident="CHSO"):
         self.t = t
         self.ident = ident
 
@@ -340,7 +340,7 @@ def main():
     g.add_argument("--sim", metavar="SKETCH")
     g.add_argument("--device", action="store_true")
     ap.add_argument("--port")
-    ap.add_argument("--id", default="CHSL", help="handshake prefix the game answers '?' with")
+    ap.add_argument("--id", default="CHSO", help="handshake prefix the game answers '?' with")
     ap.add_argument("-v", "--verbose", action="store_true", help="echo each script line")
     ap.add_argument("-D", dest="defines", action="append", default=[])
     ap.add_argument("script")

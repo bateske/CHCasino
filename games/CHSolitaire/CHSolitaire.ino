@@ -19,7 +19,7 @@ void setup() {
     gfx_begin(GFX_DIV2, GFX_12BPP);
     pal::init();
     screens::begin();
-    arduboy.setFrameRate(CHSL_FPS);
+    arduboy.setFrameRate(CHSO_FPS);
 }
 
 void loop() {

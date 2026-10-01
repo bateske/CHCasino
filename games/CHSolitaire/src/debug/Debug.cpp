@@ -1,6 +1,6 @@
 #pragma GCC optimize("Os")
 #include "Debug.h"
-#if CHSL_DEBUG
+#if CHSO_DEBUG
 #include <Arduino.h>
 #include <CHGfx.h>
 #include "../CHGame.h"
@@ -61,7 +61,7 @@ static bool ackPending = false;
 static uint32_t tRnd;
 static uint32_t sumRnd, maxRnd, frames, late;
 static uint32_t lastFrameStart;
-#if CHSL_PROFILE
+#if CHSO_PROFILE
 static uint32_t profT, profSum[12], profFrames;
 
 void profStart() { profT = micros(); profFrames++; }
@@ -126,7 +126,7 @@ static void execute() {
     char *p = buf;
     switch (cmd) {
         case '?':
-            print("CHSL " CHSL_VERSION "\n");
+            print("CHSO " CHSO_VERSION "\n");
             break;
         case 'S':
             gfx_wait();
@@ -170,7 +170,7 @@ static void execute() {
             sumRnd = maxRnd = frames = late = 0;
             break;
         }
-#if CHSL_PROFILE
+#if CHSO_PROFILE
         case 'T': {
             uint32_t f = profFrames ? profFrames : 1;
             p = fmtStr(p, "PROF");

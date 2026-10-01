@@ -50,22 +50,25 @@ sketchbook libraries.
 
 ## Known issues
 
-### Save magics that collide
+### Save magics (fixed 2026-10-01)
 
 All games keep their saves in the same two flash pages, and each must
 recognise only its own records. A record is accepted when its magic **and**
-version match.
+version match. Until 2026-10-01 three pairs collided:
 
-| Games | Magic | Effect |
+| Games | Old magic | Now |
 |---|---|---|
-| CHSlots, CHSolitaire | `0x4C534843` "CHSL", both version 1 | **Live.** After playing one, the other accepts its save as its own, with a different layout. The two also share the debug handshake id `CHSL` and the `CHSL_DEBUG` macro. |
-| CHCraps, CHYacht | `0x52434843` "CHCR", both version 1 | **Live.** CHYacht's comment says "CHYD", but the value is CHCraps'. |
-| CHBackgammon, CHFour | `0x47424843` "CHBG" (version 2 vs 1) | **Latent.** The versions differ today, so neither accepts the other's record. CHFour's comment says "CHF4". |
+| CHSlots, CHSolitaire | `0x4C534843` "CHSL", both version 1 (live), plus the same debug id and `CHSL_` prefix | CHSolitaire: magic `0x4F534843` "CHSO", handshake `CHSO`, prefix `CHSO_` |
+| CHCraps, CHYacht | `0x52434843` "CHCR", both version 1 (live) | CHYacht: `0x44594843` "CHYD" |
+| CHBackgammon, CHFour | `0x47424843` "CHBG", versions 2 and 1 (latent) | CHFour: `0x34464843` "CHF4" |
 
-**Fix:** give CHSolitaire, CHYacht and CHFour magics of their own. CHSolitaire
-also needs its own debug prefix and handshake id. Any saves they hold are
-lost once. These were left as they are so that the move into CHCasino
-changed no behaviour.
+They were fixed with the SD game menu, which makes switching games routine.
+A save written by an older build of those three games is ignored once. The
+simulator frames of all three were compared before and after (identical:
+69, 54 and 39 images) and their release images did not change size.
+
+Every game still shares the two pages: the next game to save overwrites the
+last one's record. [sd-menu.md](sd-menu.md) says so to players.
 
 ### Other
 

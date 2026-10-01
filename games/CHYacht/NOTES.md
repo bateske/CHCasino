@@ -26,7 +26,7 @@ Agent-facing notes for continuing work here; rules, controls and build are in RE
 
 ## Open items
 
-- Known issue (logged, not fixed; see ../../docs/status.md): the save magic in src/save/Save.cpp is `0x52434843`, which is "CHCR", the same as CHCraps's; its comment says "CHYD". After switching between the two games one can read the other's save record. A fix needs a new magic (e.g. "CHYD" = `0x44594843`), which makes existing saves be ignored. The debug handshake is already CHYD.
+- Fixed 2026-10-01 (with the SD game menu, which makes switching games routine): the save magic in src/save/Save.cpp was `0x52434843`, CHCraps's "CHCR"; it is now "CHYD" = `0x44594843`, as its comment always said. A save written by an older build is ignored once. The debug handshake was already CHYD.
 - Device run: dice cam frame times, the feel of shaking and throwing, sounds, saving across a power cycle. Device debug builds are `CHYD_LEAN` (no saving, no Options/Stats pages; `-DCHYD_FULL` keeps them). Put the release build back afterwards.
 
 ## Gotchas

@@ -376,12 +376,15 @@ void loop() {
         if (pressed(PIN_BTN_B)) {
             if (!bDown) { bDown = true; bHeld = now; }
             if (now - bHeld > 1000 && !safeMode) {
+                // Back to the SD game menu: with the menu bootloader any reset
+                // without a request shows the menu. (Uploads still reach the
+                // bootloader through the 1200-baud touch.)
                 gfx_clear(BG);
-                centred(56, "BOOTLOADER", GOLD, 2);
+                centred(56, "MENU", GOLD, 2);
                 gfx_flush();
                 usbmsc::detach();
                 delay(300);
-                chgame_enter_bootloader();
+                NVIC_SystemReset();
             }
         } else bDown = false;
     }

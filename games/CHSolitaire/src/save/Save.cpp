@@ -8,14 +8,14 @@
 
 namespace save {
 
-#if CHSL_LEAN
+#if CHSO_LEAN
 // Device debug builds (the serial protocol) don't fit with this code and a
 // page left over to save in, so saving is left out of them.
 bool available() { return false; }
 bool load(Options &, Stats &, Klondike &) { return false; }
 bool store(const Options &, const Stats &, const Klondike &) { return false; }
 #else
-static const uint32_t MAGIC = 0x4C534843u;       // "CHSL"
+static const uint32_t MAGIC = 0x4F534843u;       // "CHSO"
 static const uint8_t VERSION = 1;
 static const uint32_t PAGE = 256;
 static const uint32_t PAGE_A = 0xF500, PAGE_B = 0xF600;   // metadata page is 0xF700

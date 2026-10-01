@@ -31,7 +31,7 @@ def build(debug):
     out = SKETCH / "build" / ("debug" if debug else "release")
     cmd = ["arduino-cli", "compile", "-b", FQBN if debug else RELEASE, "--build-path", str(out)]
     if debug:
-        cmd += ["--build-property", "build.extra_flags=-DCHSL_DEBUG=1"]
+        cmd += ["--build-property", "build.extra_flags=-DCHSO_DEBUG=1"]
     cmd += ["--library", str(CHCASINO / "platform" / "libraries" / "CHGfx")]  # CHCasino's CHGfx
     cmd.append(str(SKETCH))
     r = subprocess.run(cmd, capture_output=True, text=True)
