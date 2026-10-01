@@ -61,6 +61,7 @@ static void lcd_sane(const char *what)
     CHECK(B->lcd.timing_violations == 0, "%s: panel timing violations %u", what, B->lcd.timing_violations);
     CHECK(B->lcd.garbage_shown == 0, "%s: display switched on over unwritten pixels", what);
     CHECK(B->bus_conflicts == 0, "%s: both chip selects low", what);
+    CHECK(B->spi_off_xfers == 0, "%s: %u SPI transfers with SPI1 off (would hang the chip)", what, B->spi_off_xfers);
     CHECK(B->sd.init_fast == 0, "%s: card identified above 400 kHz", what);
 }
 

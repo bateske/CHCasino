@@ -113,6 +113,7 @@ int host_boot(void)
         boot_start_us = B->now_us;
         B->pins_inited = 0;
         B->usb_up = 0;
+        B->spi_on = 0;                  /* a reset turns SPI1 off */
         boot_main();
         _exit(END_CRASH);
     }
@@ -239,7 +240,7 @@ void hal_pins_init(void)
     lcd_model_rst(&B->lcd, 1, B->now_us);
 }
 
-void hal_spi_speed(uint32_t br) { B->spi_br = br; }
+void hal_spi_speed(uint32_t br) { B->spi_br = br; B->spi_on = 1; }
 
 uint8_t hal_spi_xfer(uint8_t b)
 {
@@ -248,6 +249,7 @@ uint8_t hal_spi_xfer(uint8_t b)
     ns_acc += 8000ull * (2u << B->spi_br) / 48u;
     if (ns_acc >= 1000) { host_advance_us(ns_acc / 1000); ns_acc %= 1000; }
     if (!B->sd_cs && !B->lcd_cs) B->bus_conflicts++;
+    if (!B->spi_on) B->spi_off_xfers++;
     r = sd_model_xfer(&B->sd, b, !B->sd_cs, B->spi_br, B->now_us);
     if (B->card_dies_on_flash && B->flash_ops) r = 0xFF;
     if (!B->lcd_cs) lcd_model_byte(&B->lcd, b, B->lcd_dc, B->now_us);

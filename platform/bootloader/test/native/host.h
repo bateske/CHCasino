@@ -58,6 +58,8 @@ typedef struct {
     uint8_t sd_cs, lcd_cs, lcd_dc, lcd_rst, led;
     uint32_t spi_br;
     uint32_t bus_conflicts;         /* both chip selects low during a transfer */
+    uint8_t  spi_on;                /* hal_spi_speed() called since reset */
+    uint32_t spi_off_xfers;         /* transfers while SPI1 is off: a hang on the chip */
     uint32_t pins_inited;
 
     /* USB (proto) */

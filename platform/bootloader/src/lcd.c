@@ -21,6 +21,9 @@ static void cmd(uint8_t c)
 
 void lcd_reset(void)
 {
+    /* SPI1 may not be running yet (the USB-notice path never reads the card),
+       and a transfer on a disabled SPI would wait forever. */
+    hal_spi_speed(SPI_BR_12M);
     hal_lcd_select(0);
     hal_lcd_rst(0);
     sys_delay_ms(1);                 /* >= 10 us low */
