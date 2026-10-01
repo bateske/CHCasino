@@ -25,7 +25,10 @@ typedef struct {
     int      acmd;
     int      acmd41_left;       /* ACMD41s answered "idle" before "ready" */
     int      acmd41_delay;      /* the value acmd41_left is reset to by CMD0 */
-    uint32_t read_latency;      /* 0xFF bytes between R1 and the data token */
+    uint32_t read_latency;      /* microseconds between R1 and the data token (the card's access time) */
+    uint64_t token_at_us;       /* 0xFF until then, at queue position lat_at */
+    int      lat_at;
+    uint64_t now_us;
     int64_t  fail_lba;          /* this LBA answers with an error token */
     int64_t  timeout_lba;       /* this LBA never sends a token */
     uint32_t fail_after_reads;  /* every read after this many fails (0 = never) */
@@ -39,6 +42,6 @@ typedef struct {
 
 void    sd_model_insert(sd_model_t *m, int type, const char *path);
 void    sd_model_power(sd_model_t *m);           /* power cycle: back to POWERUP */
-uint8_t sd_model_xfer(sd_model_t *m, uint8_t in, int cs_low, uint32_t spi_br);
+uint8_t sd_model_xfer(sd_model_t *m, uint8_t in, int cs_low, uint32_t spi_br, uint64_t now_us);
 
 #endif

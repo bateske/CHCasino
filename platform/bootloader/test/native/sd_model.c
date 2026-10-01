@@ -1,5 +1,6 @@
 #include "sd_model.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -26,7 +27,7 @@ void sd_model_insert(sd_model_t *m, int type, const char *path)
     memset(m, 0, sizeof *m);
     m->type = type;
     m->fail_lba = m->timeout_lba = -1;
-    m->read_latency = 3;
+    m->read_latency = 200;
     m->acmd41_delay = 3;
     if (path) {
         snprintf(m->path, sizeof m->path, "%s", path);
@@ -65,6 +66,7 @@ static void command(sd_model_t *m, uint32_t spi_br)
     m->acmd = 0;
     m->cmds++;
     m->out_len = m->out_pos = 0;
+    m->token_at_us = 0;
 
     if (m->state == SDS_MULTIREAD) {            /* streaming: only CMD12 is heard */
         if (c != 12) return;
@@ -118,7 +120,8 @@ static void command(sd_model_t *m, uint32_t spi_br)
         if (lba >= m->sectors) { q(m, 0x40); break; }                    /* parameter error */
         m->reads++;
         q(m, 0x00);
-        for (uint32_t i = 0; i < m->read_latency; i++) q(m, 0xFF);
+        m->lat_at = m->out_len;                 /* the access time: 0xFF until the token */
+        m->token_at_us = m->now_us + m->read_latency;
         if ((int64_t)lba == m->timeout_lba) return;                      /* token never comes */
         if ((int64_t)lba == m->fail_lba || (m->fail_after_reads && m->reads > m->fail_after_reads)) { q(m, 0x08); break; }
         q(m, 0xFE);
@@ -133,7 +136,18 @@ static void command(sd_model_t *m, uint32_t spi_br)
     }
 }
 
-uint8_t sd_model_xfer(sd_model_t *m, uint8_t in, int cs_low, uint32_t spi_br)
+static uint8_t xfer(sd_model_t *m, uint8_t in, int cs_low, uint32_t spi_br);
+uint8_t sd_model_xfer(sd_model_t *m, uint8_t in, int cs_low, uint32_t spi_br, uint64_t now_us)
+{
+    static int trace = -1;
+    m->now_us = now_us;
+    if (trace < 0) trace = getenv("SD_TRACE") != NULL;
+    uint8_t out = xfer(m, in, cs_low, spi_br);
+    if (trace && cs_low) fprintf(stderr, "sd %02x>%02x st%d\n", in, out, m->state);
+    return out;
+}
+
+static uint8_t xfer(sd_model_t *m, uint8_t in, int cs_low, uint32_t spi_br)
 {
     uint8_t out = 0xFF;
 
@@ -161,7 +175,8 @@ uint8_t sd_model_xfer(sd_model_t *m, uint8_t in, int cs_low, uint32_t spi_br)
         m->state = SDS_READY;
         return 0xFF;
     default:
-        if (m->out_pos < m->out_len) out = m->out[m->out_pos++];
+        if (m->out_pos == m->lat_at && m->now_us < m->token_at_us) { }
+        else if (m->out_pos < m->out_len) out = m->out[m->out_pos++];
         break;
     }
     if (m->cmd_len == 0) {

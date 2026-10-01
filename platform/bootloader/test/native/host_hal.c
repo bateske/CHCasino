@@ -248,7 +248,7 @@ uint8_t hal_spi_xfer(uint8_t b)
     ns_acc += 8000ull * (2u << B->spi_br) / 48u;
     if (ns_acc >= 1000) { host_advance_us(ns_acc / 1000); ns_acc %= 1000; }
     if (!B->sd_cs && !B->lcd_cs) B->bus_conflicts++;
-    r = sd_model_xfer(&B->sd, b, !B->sd_cs, B->spi_br);
+    r = sd_model_xfer(&B->sd, b, !B->sd_cs, B->spi_br, B->now_us);
     if (!B->lcd_cs) lcd_model_byte(&B->lcd, b, B->lcd_dc, B->now_us);
     return B->sd_cs ? 0xFF : r;
 }
