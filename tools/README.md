@@ -30,6 +30,8 @@ pyserial). The simulator also needs a C++ compiler: `$CHSIM_CXX`, zig,
 | `chsim/gifsheet.py` | Tiles a GIF's frames into one image to review it: `gifsheet.py IN.gif OUT.png [--every N] [--start F] [--count N] [--cols C] [--scale S]`. |
 | `check_size.py` | Flash and RAM report from the linker map. It checks the 50,944 B / 18,416 B limits and shows the space left for the save pages; `--top N` and `--symbols` list what takes the room. |
 | `serialcap.py` | Finds the board's USB serial port (VID:PID 16C0:27DD), opens it with DTR set and prints its output. `find_port()` and `open_port()` are used by `device.py` and `chdrive.py`. |
+| `chgpack.py` | Game packages for the SD menu (`docs/chg-format.md`): `pack <bin> <out.chg> --title ...` wraps a sketch's release `.bin`; `verify` checks packages exactly as the bootloader does; `info <card\|folder\|image>` lists a card's packages (and their fragmentation in a FAT image). Run from the repository root. |
+| `sdcard/mkcard.py` | Builds every game in `sdcard/games.json` (and CHSDtoUSB), packs them and lays out a whole card in `out/sdcard/` (`GAMES/*.CHG` plus the games' data files); `--image` also writes a FAT32 image, `--no-build` packs the existing builds. Run from the repository root. |
 
 A game can add its own simulator shims in `<game>/tools/chsim/host/`. They
 are compiled with the shared ones, and a `.cpp` there with the same name as

@@ -48,6 +48,25 @@ sketchbook libraries.
 - saving across a power cycle;
 - for the SD games, a real card. CHSd has never read one on a board.
 
+## The bootloader with the SD game menu
+
+[platform/bootloader](../platform/bootloader) (BOOT_VERSION 2):
+
+| | Verified | Device |
+|---|---|---|
+| Menu bootloader (release, 11,908 B) | PC suite (`test/native/run_tests.py`): flash/SD/panel models, every package error, power cuts at every flash operation of an install and of an upload, all 21 real packages installed in turn, 10 pinned menu frames | **never run**; [HARDWARE.md](../platform/bootloader/HARDWARE.md) has the steps |
+| Card builder (`tools/sdcard/mkcard.py`) | all 20 games and CHSDtoUSB built and packed; payloads equal the release images above | |
+
+The first device session follows HARDWARE.md:
+- **HW1:** the menu as a program, under the current bootloader.
+- **HW2a:** the new code without the menu.
+- **HW2b:** the menu bootloader.
+- **HW3:** the matrix.
+
+Its open questions are the SD clock that real cards take (12 MHz is
+assumed), the panel's colour order, install time, and the CHSd timings on
+real cards.
+
 ## Known issues
 
 ### Save magics (fixed 2026-10-01)

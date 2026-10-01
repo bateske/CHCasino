@@ -12,6 +12,11 @@ it, and one utility exposes it over USB.
 | CHCrossword | CHSd | `CHCW/*.CWD`: puzzle packs | MIT |
 | CHSDtoUSB | its own read-write driver (from sdfatlib, CRC-checked, DMA) | the whole card, block by block, for the PC | GPL-3.0 |
 
+The **bootloader** reads the card too: its game menu lists and installs
+`GAMES/*.CHG` packages ([sd-menu.md](sd-menu.md)). It uses its own C port of
+CHSd (`platform/bootloader/src/sd.c`, `fat.c`), which follows any amount of
+fragmentation and recovers a card that a reset left mid-transfer.
+
 The other 17 games never touch the card. Each SD game also works without
 one, using its built-in data in flash. The card adds to that.
 
@@ -57,6 +62,11 @@ generated from CHSd's `host/`) give the game a pretend card:
   no card.
 
 ## Putting files on a real card
+
+**Everything at once:** `python tools/sdcard/mkcard.py` builds every game,
+packs them for the menu and lays out the whole card in `out/sdcard/`:
+`GAMES/*.CHG`, `WORDS.DIC`, `PHRASES.BNK` and `CHCW/`. Copy its contents to
+the card's root.
 
 **From a PC with a card reader:** copy the game's files from its `sdcard/`
 folder to the card. Follow the paths above exactly: the root for

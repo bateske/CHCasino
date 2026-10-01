@@ -246,6 +246,10 @@ def main():
         imgs, lay, pk = build_images(a.quick)
         spec = sd_spec(imgs, lay, pk, a.quick)
         ok &= run("sd", build("sd", "test_sd.c", sd_defs, sd_srcs), spec)
+    if menu_built and a.k in "app" and (BUILD / "boot_fat32.img").exists():
+        app_srcs = ["boot.c", "bootreq.c", "appmeta.c", "crc32.c", "crc16.c", "sd.c", "fat.c", "chg.c", "install.c", "lcd.c", "menu.c"]
+        exe = build("app", "test_app.c", ["-DCHBOOT_MENU=1", "-DCHBOOT_APP=1"], app_srcs)
+        ok &= run("app", exe, BUILD / "boot_fat32.img")
     if menu_built and a.k in "boot":
         if a.k not in "sd":
             imgs, lay, pk = build_images(a.quick)

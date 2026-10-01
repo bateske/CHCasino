@@ -333,7 +333,7 @@ void menu_main(int app)
                 rc = install(g->clus, g->size, buf);
 #if CHBOOT_APP
                 if (rc == INST_OK) {
-                    char s[16] = "    MS PER BLOCK";
+                    char s[] = "     MS PER BLOCK";
                     ms = (sys_ticks() - t0) / SYS_TICKS_PER_MS * 100u / ((g->size >> 9) + 1u);
                     s[3] = (char)('0' + ms % 10); s[2] = '.'; ms /= 10;
                     s[1] = (char)('0' + ms % 10); ms /= 10;
