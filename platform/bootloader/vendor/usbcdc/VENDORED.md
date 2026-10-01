@@ -20,6 +20,8 @@ Any change to these files MUST be listed here.
 | `wch_usbcdc_cdc.c` | added `CDC_enumerated()` / `CDC_dtr()` / `CDC_baud()` accessors | Needed for mode detection and the 1200-baud upload handshake |
 | `wch_usbcdc_internal.h` | declared the above | |
 | `wch_usbcdc_config.h` | **contents replaced** by a forwarder to `shared/chgame_usb_identity.h` | One identity shared by bootloader and application. An -I shadow does NOT work here — quoted includes search the including file's own directory first, so the vendor copy always won and the change silently did nothing |
+| `wch_usbcdc_handler.c` | `USB_init()` replaced by the Arduino core 0.2.4 version: direct register writes instead of `RCC_*ClockCmd()`/`GPIO_Init()`, the interrupt armed before the pull-up, no 15 ms post-attach spin | CHCasino SD menu bootloader: about 400 B smaller, so the menu fits in the 12 KB reservation |
+| `wch_usbcdc_descr.c` | `hex_chars` in `uint32_to_hex_string()` made `static const` | A local array initialiser made GCC copy the string with newlib's `memcpy` (178 B) |
 
 ## Known issues in upstream that we must address
 

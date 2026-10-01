@@ -1,24 +1,23 @@
 #ifndef CHGAME_BOOTREQ_H
 #define CHGAME_BOOTREQ_H
 #include "chgame_map.h"
+#include "chgame_bootreq.h"
 
 /* The retained boot-request block. Lives in .boot_magic, which both the
  * bootloader and the application linker scripts pin to CHGAME_MAGIC_ADDR and
  * mark NOLOAD, so startup neither loads nor zeroes it and it survives
- * NVIC_SystemReset().
- *
- * NOTE: SRAM retention across a system reset is an assumption that gets
- * verified on real hardware as the first test of Milestone 2. If it does not
- * hold, the fallback is a dedicated flash request page. */
+ * NVIC_SystemReset() (verified on hardware: SRAM survives a warm reset but not
+ * a power cycle). Reasons are in shared/chgame_bootreq.h. */
+#ifdef CHBOOT_HOST
+volatile chgame_bootreq_t *host_retained(void);   /* the harness's shared copy */
+#define chgame_bootreq (*host_retained())
+#else
 extern volatile chgame_bootreq_t chgame_bootreq;
+#endif
 
-int  bootreq_pending(void);   /* magic AND its inverse both intact */
-void bootreq_set(void);
-void bootreq_clear(void);
-
-/* Increments the warm-reset boot counter and returns the new value. Returns 1
- * when the previous value did not survive (a cold boot, or SRAM that does not
- * retain), so a climbing value is unambiguous evidence of a reset loop. */
-uint32_t bootcount_bump(void);
+/* Returns the pending reason (0 if none, or if the magic/inverse pair is not
+ * intact) and clears the block, so a request is acted on exactly once. */
+uint32_t bootreq_take(void);
+void     bootreq_set(uint32_t reason);
 
 #endif

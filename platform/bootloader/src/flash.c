@@ -70,22 +70,6 @@ RAMFUNC static void irq_restore(uint32_t old)
     __asm volatile ("csrw 0x800, %0" : : "r" (old));
 }
 
-/* ---- bounds ---------------------------------------------------------------
- * Deliberately duplicated at the lowest level. The protocol layer checks too,
- * but this is the check that actually protects the bootloader.
- */
-RAMFUNC static int range_ok(uint32_t addr, uint32_t len, flash_region_t region)
-{
-    uint32_t lo = (region == FLASH_REGION_BOOT) ? 0u : CHGAME_APP_START;
-    uint32_t hi = (region == FLASH_REGION_BOOT) ? CHGAME_APP_START : CHGAME_FLASH_SIZE;
-
-    if (len == 0u)                 return 0;
-    if (addr < lo)                 return 0;
-    if (addr > hi)                 return 0;   /* catches addr beyond the region */
-    if (len > hi - addr)           return 0;   /* no overflow: hi >= addr here    */
-    return 1;
-}
-
 /* ---- RAM-resident primitives ---------------------------------------------- */
 
 RAMFUNC static void fl_unlock(void)
@@ -148,11 +132,14 @@ RAMFUNC int flash_erase_page(uint32_t addr, flash_region_t region)
     return FLASH_OK;
 }
 
-RAMFUNC int flash_write_page(uint32_t addr, const uint8_t *data, flash_region_t region)
+/* Erase (when asked) and program one page, then read it back. A silent
+ * programming failure that only showed up at the final image CRC would waste
+ * a whole update; catching it per page names the page that failed. */
+RAMFUNC static int fl_write(uint32_t addr, const uint8_t *data, flash_region_t region, int erase)
 {
     uint32_t irq;
-    /* The page buffer is loaded a word at a time, so the source must be word
-       aligned. The protocol layer always stages through an aligned page buffer. */
+    /* The page buffer is loaded a word at a time, so the source is first
+       gathered into an aligned copy. */
     uint32_t buf[CHGAME_PAGE_SIZE / 4u];
     const uint8_t *s = data;
 
@@ -167,14 +154,12 @@ RAMFUNC int flash_write_page(uint32_t addr, const uint8_t *data, flash_region_t 
 
     irq = irq_off();
     fl_unlock();
-    fl_erase(addr);
+    if (erase)
+        fl_erase(addr);
     fl_program(addr, buf);
     fl_lock();
     irq_restore(irq);
 
-    /* Read back immediately. A silent programming failure that only shows up at
-       the final image CRC wastes an entire upload; catching it per page tells
-       the host exactly which page failed. */
     for (uint32_t i = 0; i < CHGAME_PAGE_SIZE / 4u; i++)
         if (*(volatile uint32_t *)(addr + i * 4u) != buf[i])
             return FLASH_ERR_VERIFY;
@@ -182,16 +167,14 @@ RAMFUNC int flash_write_page(uint32_t addr, const uint8_t *data, flash_region_t 
     return FLASH_OK;
 }
 
-int flash_erase_range(uint32_t addr, uint32_t len, flash_region_t region)
+RAMFUNC int flash_write_page(uint32_t addr, const uint8_t *data, flash_region_t region)
 {
-    if (addr % CHGAME_PAGE_SIZE)      return FLASH_ERR_ALIGN;
-    if (!range_ok(addr, len, region)) return FLASH_ERR_RANGE;
+    return fl_write(addr, data, region, 1);
+}
 
-    for (uint32_t a = addr; a < addr + len; a += CHGAME_PAGE_SIZE) {
-        int rc = flash_erase_page(a, region);
-        if (rc != FLASH_OK) return rc;
-    }
-    return FLASH_OK;
+RAMFUNC int flash_program_page(uint32_t addr, const uint8_t *data, flash_region_t region)
+{
+    return fl_write(addr, data, region, 0);
 }
 
 /* ---- developer self-update --------------------------------------------------

@@ -1,16 +1,6 @@
-/* Symbols the WCH startup and newlib expect but that nothing in an 8 KB,
- * C-only bootloader actually needs.
- *
- * ch32x035_misc.c supplies weak stubs for every IRQ handler except NMI,
- * HardFault and SysTick (see the commented-out block at its end); the first two
- * live in fault.c, and SysTick is here because the bootloader uses SysTick as a
- * free-running counter with its interrupt disabled, so this can never run.
- *
- * _init/_fini exist only to satisfy __libc_init_array/__libc_fini_array, which
- * startup_ch32x035.S calls unconditionally. There are no static constructors. */
-
+/* SysTick_Handler is in the vector table but can never run: the bootloader
+ * uses SysTick as a free-running counter with its interrupt disabled.
+ * ch32x035_misc.c supplies weak stubs for every other IRQ handler except NMI
+ * and HardFault, which live in fault.c. */
 void SysTick_Handler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
 void SysTick_Handler(void) { }
-
-void _init(void) { }
-void _fini(void) { }

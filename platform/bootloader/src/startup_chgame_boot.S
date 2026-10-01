@@ -10,6 +10,14 @@
 ;* microcontroller manufactured by Nanjing Qinheng Microelectronics.
 ;*******************************************************************************/
 
+/* CHGAME: see CHGAME_BOOT_SIG in chgame_map.h. The dry-run build that runs
+   as an application (build.sh app) must not carry it. */
+#ifdef CHBOOT_APP
+#define CHGAME_BOOT_SIG_WORD 0
+#else
+#define CHGAME_BOOT_SIG_WORD 0x4C424843
+#endif
+
 	.section	.init,"ax",@progbits
 	.global	_start
 	.align	1
@@ -20,7 +28,7 @@ _start:
 _vector_base:
     .option norvc;
     .word   _start
-    .word   0
+    .word   CHGAME_BOOT_SIG_WORD       /* reserved slot: "CHBL", marks a bootloader image (chgame_map.h) */
     .word   NMI_Handler                /* NMI */
     .word   HardFault_Handler          /* Hard Fault */
     .word   0
@@ -235,9 +243,9 @@ handle_reset:
     ori t0, t0, 3           
 	csrw mtvec, t0
 
-    la a0, __libc_fini_array
-    call atexit
-    call __libc_init_array
+    /* CHGAME: no atexit(__libc_fini_array) / __libc_init_array here. The
+       bootloader has no static constructors and never returns from main, and
+       the two calls pulled in about 300 B of newlib. */
 
     jal  SystemInit
 	la t0, main

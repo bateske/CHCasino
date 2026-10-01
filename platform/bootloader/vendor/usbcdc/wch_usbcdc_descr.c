@@ -131,7 +131,7 @@ WCH_USBCDC_INTERF_DESCR wch_usbcdc_InterfDescr = {
 
 // Helper functions
 void uint32_to_hex_string(uint32_t value, char* output) {
-    const char hex_chars[] = "0123456789ABCDEF";
+    static const char hex_chars[] = "0123456789ABCDEF";   /* CHGAME: static, or GCC builds it on the stack with memcpy */
     for (int i = 7; i >= 0; i--) {
         output[7-i] = hex_chars[(value >> (i * 4)) & 0xF];
     }

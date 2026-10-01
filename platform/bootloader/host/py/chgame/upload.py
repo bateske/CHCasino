@@ -120,10 +120,15 @@ def selfupdate(c: Client, boot_image: bytes,
     the application region; re-upload afterwards.
     """
     boot_image = pad_to_word(boot_image)
+    # Unlock BEFORE staging. Staging ends with valid metadata over the staged
+    # copy; if the unlock were refused after that, a bootloader image linked
+    # for address 0 would be left looking like a launchable application.
+    # (BOOT_VERSION 2 and later also refuse to launch an image carrying the
+    # bootloader signature, CHGAME_BOOT_SIG, but older ones do not.)
+    c.check(CMD_DEV_UNLOCK, struct.pack("<I", DEV_KEY))
     info = upload(c, boot_image, progress=progress)
 
     crc = zlib.crc32(boot_image) & 0xFFFFFFFF
-    c.check(CMD_DEV_UNLOCK, struct.pack("<I", DEV_KEY))
 
     try:
         c.check(CMD_DEV_WRITE_BOOT, struct.pack("<II", len(boot_image), crc))

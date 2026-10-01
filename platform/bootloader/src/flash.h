@@ -27,11 +27,35 @@ typedef enum {
     FLASH_REGION_BOOT = 1,   /* 0 .. CHGAME_APP_START — developer command only */
 } flash_region_t;
 
+/* ---- bounds ---------------------------------------------------------------
+ * Deliberately checked again at the lowest level, inside the RAM-resident
+ * writer. The callers check too, but this is the check that actually protects
+ * the bootloader. Always inlined, so it lives inside each RAMFUNC (nothing in
+ * there may call into flash) and the host tests exercise the same code.
+ */
+#ifndef RANGE_OK_ATTR
+#define RANGE_OK_ATTR __attribute__((always_inline))
+#endif
+static inline RANGE_OK_ATTR int range_ok(uint32_t addr, uint32_t len, flash_region_t region)
+{
+    uint32_t lo = (region == FLASH_REGION_BOOT) ? 0u : CHGAME_APP_START;
+    uint32_t hi = (region == FLASH_REGION_BOOT) ? CHGAME_APP_START : CHGAME_FLASH_SIZE;
+
+    if (len == 0u)                 return 0;
+    if (addr < lo)                 return 0;
+    if (addr > hi)                 return 0;   /* catches addr beyond the region */
+    if (len > hi - addr)           return 0;   /* no overflow: hi >= addr here    */
+    return 1;
+}
+
 void ramfunc_init(void);   /* copy .ramfunc from flash to SRAM; call once at boot */
 
 int  flash_erase_page(uint32_t addr, flash_region_t region);
+/* Erase, program and read back one page. */
 int  flash_write_page(uint32_t addr, const uint8_t *data, flash_region_t region);
-int  flash_erase_range(uint32_t addr, uint32_t len, flash_region_t region);
+/* Program and read back one page that is already erased (no erase cycle).
+ * Used for the metadata page, which the update erased at its start. */
+int  flash_program_page(uint32_t addr, const uint8_t *data, flash_region_t region);
 
 /* ---- developer self-update -------------------------------------------------
  * Rewrites the BOOTLOADER's own region from an image already staged in the

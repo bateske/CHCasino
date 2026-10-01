@@ -15,12 +15,12 @@
  *                              5 load-addr-misaligned   6 load-access-fault
  *                              7 store-addr-misaligned  8 store-access-fault
  *                             12 ecall-from-M
- *   [ region of mepc       ]   1 = below 0x2000 (bootloader code)
- *                              2 = 0x2000..0xF6FF (application code)
- *                              3 = anywhere else (RAM, or a wild jump)
+ *   [ mepc, low 16 bits    ]   four nibbles, MSB first, each as four
+ *                              marks (long = 1, short = 0)
  */
 #include "ch32x035.h"
 #include "chgame_map.h"
+#include "hal.h"
 #include "spin.h"
 
 #ifndef CHGAME_IMAGE_ID
@@ -33,8 +33,10 @@ void HardFault_Handler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
 static void fault_led_init(void)
 {
     RCC->APB2PCENR |= RCC_APB2Periph_GPIOB;
-    /* PB9 push-pull output: CFGHR nibble for pin 9 is bits [7:4]. */
-    GPIOB->CFGHR = (GPIOB->CFGHR & ~(0xFu << 4)) | (0x1u << 4);
+    /* PB9 push-pull output. CFGHR is write-only on this part, so it is written
+       whole from the board's composed value (a read-modify-write would turn
+       SD_CS, LCD_RST and the buzzer pin into floating inputs). */
+    GPIOB->CFGHR = HAL_GPIOB_CFGHR;
 }
 
 static void pulses(uint32_t n, uint32_t on_ms, uint32_t off_ms)

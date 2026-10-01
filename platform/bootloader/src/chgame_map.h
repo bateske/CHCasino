@@ -25,7 +25,7 @@
 #define CHGAME_BOOT_START     CHGAME_FLASH_BASE
 #define CHGAME_BOOT_SIZE      0x00003000u   /* 12 KB reservation           */
 
-#define CHGAME_APP_START      (CHGAME_BOOT_START + CHGAME_BOOT_SIZE)   /* 0x2000 */
+#define CHGAME_APP_START      (CHGAME_BOOT_START + CHGAME_BOOT_SIZE)   /* 0x3000 */
 #define CHGAME_META_ADDR      (CHGAME_FLASH_BASE + CHGAME_FLASH_SIZE - CHGAME_PAGE_SIZE) /* 0xF700 */
 #define CHGAME_APP_MAX_SIZE   (CHGAME_META_ADDR - CHGAME_APP_START)    /* 50944  */
 #define CHGAME_APP_END        CHGAME_META_ADDR                          /* exclusive */
@@ -41,6 +41,14 @@
 /* --- Boot request marker --------------------------------------------------- */
 /* Stored as {magic, ~magic} so uninitialised SRAM cannot forge a request. */
 #define CHGAME_BOOT_MAGIC     0x43484742u   /* "CHGB" */
+
+/* --- Bootloader image signature -------------------------------------------- */
+/* Word 2 of the bootloader's vector table (offset 8, a reserved slot that is 0
+ * in every image built with WCH's startup). An image at CHGAME_APP_START that
+ * carries it is a bootloader staged for self-update, never an application:
+ * appmeta_check() refuses it even if its metadata is valid. */
+#define CHGAME_BOOT_SIG       0x4C424843u   /* "CHBL" */
+#define CHGAME_BOOT_SIG_OFFSET 8u
 
 /* --- Application metadata (one flash page at CHGAME_META_ADDR) ------------- */
 #define CHGAME_META_MAGIC     0x4D474843u   /* "CHGM" */

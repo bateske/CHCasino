@@ -13,8 +13,13 @@ int appmeta_check(void)
     if (m->length == 0 || m->length > CHGAME_APP_MAX_SIZE || (m->length & 3u) != 0)
         return APP_INVALID_LENGTH;
 
-    if (crc32_buf((const void *)CHGAME_APP_START, m->length) != m->crc32)
+    if (crc32_buf(FLASH_AT(CHGAME_APP_START), m->length) != m->crc32)
         return APP_INVALID_CRC;
+
+    /* After the CRC, so that only a complete, intact copy of a staged
+       bootloader is told apart from an application. */
+    if (FLASH_W(CHGAME_APP_START + CHGAME_BOOT_SIG_OFFSET) == CHGAME_BOOT_SIG)
+        return APP_INVALID_BOOTIMAGE;
 
     return APP_VALID;
 }

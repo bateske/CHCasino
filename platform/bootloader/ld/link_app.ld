@@ -1,9 +1,6 @@
-/* CHGame bootloader link script.
- * Numbers mirror src/chgame_map.h - keep them in sync.
- *   FLASH 0x00000000 + 12K  (bootloader reservation)
- *   MAGIC 0x20000000 + 16   (retained boot-request block, NOLOAD)
- *   RAM   0x20000010 + 20K-16
- */
+/* The SD menu built as an ordinary program at 0x3000 (build.sh app): a dry run
+ * of the card, panel and menu code under any bootloader. Otherwise identical
+ * to link_boot.ld. */
 ENTRY( _start )
 
 __stack_size = 2048;
@@ -11,7 +8,7 @@ PROVIDE( _stack_size = __stack_size );
 
 MEMORY
 {
-    FLASH (rx)  : ORIGIN = 0x00000000, LENGTH = 12288
+    FLASH (rx)  : ORIGIN = 0x00003000, LENGTH = 50944
     MAGIC (rw)  : ORIGIN = 0x20000000, LENGTH = 16
     RAM   (xrw) : ORIGIN = 0x20000010, LENGTH = 20464
 }
@@ -153,5 +150,5 @@ SECTIONS
     } >RAM
 
     /* Hard guarantee: the bootloader may never spill into the application. */
-    ASSERT( _etext <= 0x3000, "BOOTLOADER OVERFLOW: code+rodata would spill into the application region" )
+    ASSERT( _etext <= 0xF700, "BOOTLOADER OVERFLOW: code+rodata would spill into the application region" )
 }

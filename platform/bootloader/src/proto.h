@@ -73,7 +73,8 @@
 #define MODE_BOOTLOADER       0x01u
 #define MODE_APPLICATION      0x02u
 
-#define BOOT_VERSION          0x0001u
+/* 0x0002: SD game menu. RUN now resets into the program instead of jumping. */
+#define BOOT_VERSION          0x0002u
 
 /* ---- developer self-update gate ---------------------------------------------
  * CHGAME_ALLOW_SELFUPDATE compiles the whole facility in or out. It is 1 for
@@ -92,6 +93,9 @@
 
 void proto_init(void);
 void proto_task(void);   /* non-blocking; call from the main loop */
+
+/* Non-zero once the host has sent anything beyond HELLO/STATUS/READ. */
+extern uint8_t proto_claimed;
 
 /* Detach from USB and put the peripheral back to sleep. MUST be called before
  * handing control to the application: otherwise the D+ pull-up stays asserted,

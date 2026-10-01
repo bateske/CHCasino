@@ -17,26 +17,22 @@ static inline void USB_EP_init(void) {
 }
 
 void USB_init(void) {
-    // Use CH32X035-specific RCC functions instead of direct register access
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);
-    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_USBFS, ENABLE);
+    /* CHGAME: direct register writes rather than the vendor RCC_*ClockCmd()
+     * and GPIO_Init() helpers. Same effect; the helpers were only linked for
+     * these few lines, and dropping them saves ~350-480 B in every sketch that
+     * does not otherwise need them. */
+    RCC->APB2PCENR |= RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOC;
+    RCC->AHBPCENR  |= RCC_AHBPeriph_USBFS;
     
     // Wait for clocks to stabilize
     for(volatile int i = 0; i < 5000; i++) __NOP();
     
-    // Use proper CH32X035 GPIO initialization
-    GPIO_InitTypeDef GPIO_InitStructure = {0};
-    
-    // PC16 (USB D-) as floating input
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_16;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-    GPIO_Init(GPIOC, &GPIO_InitStructure);
-
-    // PC17 (USB D+) as input with pull-up
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_17;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
-    GPIO_Init(GPIOC, &GPIO_InitStructure);
+    /* PC16 (USB D-) floating input, PC17 (USB D+) input with pull-up. Pins
+     * 16-23 are configured through CFGXR, one nibble per pin; floating input
+     * is 0x4 and pull-up/down input 0x8, with BSXR bit (pin - 16) selecting
+     * pull-up. Exactly what GPIO_Init() wrote for these two calls. */
+    GPIOC->CFGXR = (GPIOC->CFGXR & ~0xFFu) | 0x04u | (0x08u << 4);
+    GPIOC->BSXR  = 1u << 1;
     
     // Critical: Use CH32X035-specific AFIO macros (try both approaches)
     // Approach 1: Try CH32X035 macro names
@@ -72,15 +68,22 @@ void USB_init(void) {
     // Configure USB device controller
     USBFSD->UDEV_CTRL = USBFS_UD_PD_DIS | USBFS_UD_PORT_EN;
     
-    // Enable USB with pull-up - this makes device visible to host
-    USBFSD->BASE_CTRL = USBFS_UC_DEV_PU_EN | USBFS_UC_INT_BUSY | USBFS_UC_DMA_EN;
-    
-    // Very long delay for enumeration
-    for(volatile int i = 0; i < 100000; i++) __NOP();
-
-    // Enable interrupts
+    /* Arm the interrupt BEFORE asserting the pull-up.
+     *
+     * The pull-up is what makes the device visible to the host, so enabling it
+     * first opened a window in which the host could begin talking to a device
+     * that had no handler installed to answer. That was survivable only because
+     * the host must debounce an attach for 100 ms before it issues a bus reset
+     * -- i.e. it worked by accident. Nothing requires this order. */
     USBFSD->INT_EN = USBFS_UIE_SUSPEND | USBFS_UIE_BUS_RST | USBFS_UIE_TRANSFER;
     NVIC_EnableIRQ(USBFS_IRQn);
+
+    /* Attach. From here the host may enumerate us at any time, entirely from
+     * USBFS_IRQHandler -- there is deliberately nothing left to wait for. The
+     * "very long delay for enumeration" that used to sit here spun ~15 ms for
+     * no reason: the main loop plays no part in enumeration, so the caller is
+     * free to go and run setup() while the ISR does the work. */
+    USBFSD->BASE_CTRL = USBFS_UC_DEV_PU_EN | USBFS_UC_INT_BUSY | USBFS_UC_DMA_EN;
 }
 
 void USB_EP0_copyDescr(uint8_t len) {

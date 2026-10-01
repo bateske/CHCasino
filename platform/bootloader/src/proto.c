@@ -4,18 +4,24 @@
 #include "appmeta.h"
 #include "flash.h"
 #include "crc32.h"
-#include "jump.h"
-#include "led.h"
+#include "update.h"
+#include "boot.h"
+#include "chgame_bootreq.h"
+#include "hal.h"
 #include "spin.h"
 #include "sys.h"
-#include "wch_usbcdc_internal.h"
-#include "ch32x035.h"
+#include "usb.h"
 
 /* Bench instrumentation for the multi-packet receive defect. Reported by
  * STATUS so the host can see whether the driver delivered the bytes at all,
  * which distinguishes "driver dropped the packet" from "parser mis-framed it". */
 uint32_t proto_rx_bytes;
-uint32_t proto_rx_calls;
+
+/* Set by any command that changes or leaves the bootloader's state (BEGIN,
+ * WRITE, END, ABORT, RUN, the developer commands). The menu polls the protocol
+ * while it is on screen and hands over to the upload screen only when this is
+ * set: HELLO, STATUS and READ from a probing host leave the menu alone. */
+uint8_t proto_claimed;
 
 /* ---- receive state machine ------------------------------------------------
  * Byte-at-a-time and resynchronising by construction: anything that is not a
@@ -136,12 +142,12 @@ static void page_buf_clear(void)
 /* Commit the staged page. Returns a protocol status. */
 static uint8_t page_commit(void)
 {
-    int rc;
+    uint8_t st;
     if (tx.page_fill == 0u)
         return ST_OK;
-    rc = flash_write_page(tx.page_addr, tx.page_buf, FLASH_REGION_APP);
-    if (rc != FLASH_OK)
-        return (rc == FLASH_ERR_RANGE) ? ST_ERR_RANGE : ST_ERR_FLASH;
+    st = upd_page(tx.page_addr, tx.page_buf);
+    if (st != ST_OK)
+        return st;
     tx.page_addr += CHGAME_PAGE_SIZE;
     tx.page_fill  = 0;
     page_buf_clear();
@@ -152,7 +158,7 @@ static uint8_t page_commit(void)
 
 static void do_begin(const uint8_t *p, uint16_t len)
 {
-    uint32_t size, crc, erase_len;
+    uint32_t size, crc;
 
     if (len < 8u) { send_status(CMD_BEGIN, ST_ERR_SIZE); return; }
 
@@ -165,22 +171,15 @@ static void do_begin(const uint8_t *p, uint16_t len)
         return;
     }
 
-    led_set(LED_BUSY);
     tx_reset();
 
     /* Metadata FIRST. From this instant the application is marked invalid, so a
        power loss anywhere in the rest of the update leaves the bootloader in
-       charge rather than a half-written image looking launchable. */
-    if (flash_erase_page(CHGAME_META_ADDR, FLASH_REGION_APP) != FLASH_OK) {
+       charge rather than a half-written image looking launchable. (The image
+       pages are no longer pre-erased here: each page is erased as it is
+       written, so pre-erasing only doubled the wear.) */
+    if (upd_begin() != ST_OK) {
         send_status(CMD_BEGIN, ST_ERR_FLASH);
-        led_set(LED_WAIT_UPDATE);
-        return;
-    }
-
-    erase_len = ((size + CHGAME_PAGE_SIZE - 1u) / CHGAME_PAGE_SIZE) * CHGAME_PAGE_SIZE;
-    if (flash_erase_range(CHGAME_APP_START, erase_len, FLASH_REGION_APP) != FLASH_OK) {
-        send_status(CMD_BEGIN, ST_ERR_FLASH);
-        led_set(LED_WAIT_UPDATE);
         return;
     }
 
@@ -223,57 +222,23 @@ static void do_write(const uint8_t *p, uint16_t len)
 
 static void do_end(void)
 {
-    uint8_t  st, meta_page[CHGAME_PAGE_SIZE];
-    uint32_t crc;
-    chgame_meta_t m;
+    uint8_t st;
 
     if (!tx.active)             { send_status(CMD_END, ST_ERR_STATE); return; }
     if (tx.written != tx.size)  { send_status(CMD_END, ST_ERR_SIZE);  return; }
 
     st = page_commit();
-    if (st != ST_OK) { tx_reset(); send_status(CMD_END, st); return; }
-
-    /* Verify from FLASH, not from anything we buffered. The only claim worth
-       making is about what is actually stored. */
-    crc = crc32_buf((const void *)CHGAME_APP_START, tx.size);
-    if (crc != tx.crc32) {
-        tx_reset();
-        send_status(CMD_END, ST_ERR_CRC);
-        led_set(LED_WAIT_UPDATE);
-        return;
-    }
-
-    m.magic        = CHGAME_META_MAGIC;
-    m.meta_version = CHGAME_META_VERSION;
-    m.length       = tx.size;
-    m.crc32        = tx.crc32;
-    m.app_version  = 0u;
-    m.reserved[0] = m.reserved[1] = m.reserved[2] = 0xFFFFFFFFu;
-
-    for (uint32_t i = 0; i < CHGAME_PAGE_SIZE; i++) meta_page[i] = 0xFFu;
-    for (uint32_t i = 0; i < sizeof(m); i++)        meta_page[i] = ((const uint8_t *)&m)[i];
-
-    if (flash_write_page(CHGAME_META_ADDR, meta_page, FLASH_REGION_APP) != FLASH_OK) {
-        tx_reset();
-        send_status(CMD_END, ST_ERR_FLASH);
-        led_set(LED_WAIT_UPDATE);
-        return;
-    }
-
+    if (st == ST_OK)
+        st = upd_end(tx.size, tx.crc32);
     tx_reset();
-    led_set(LED_WAIT_UPDATE);
-
-    /* Re-read through the same path the boot decision uses, so a successful END
-       means exactly "the next boot will launch this". */
-    send_status(CMD_END, appmeta_check() == APP_VALID ? ST_OK : ST_ERR_CRC);
+    send_status(CMD_END, st);
 }
 
 static void do_abort(void)
 {
     /* Erase the metadata so a partially written image can never be launched. */
-    flash_erase_page(CHGAME_META_ADDR, FLASH_REGION_APP);
+    upd_begin();
     tx_reset();
-    led_set(LED_WAIT_UPDATE);
     send_status(CMD_ABORT, ST_OK);
 }
 
@@ -294,7 +259,7 @@ static void do_read(const uint8_t *p, uint16_t len)
 
     out[0] = ST_OK;
     for (uint16_t i = 0; i < rlen; i++)
-        out[1 + i] = *(const volatile uint8_t *)(offset + i);
+        out[1 + i] = FLASH_AT(offset)[i];
 
     send_frame(CMD_READ, out, (uint16_t)(rlen + 1u));
 }
@@ -303,7 +268,6 @@ static void do_hello(void)
 {
     uint8_t  p[40];
     uint16_t o = 0;
-    const volatile uint32_t *uid = (const volatile uint32_t *)CH32X035_ESIG_UNIID1;
 
     o = put_u8 (p, o, ST_OK);
     o = put_u8 (p, o, PROTO_VERSION);
@@ -314,9 +278,9 @@ static void do_hello(void)
     o = put_u32(p, o, CHGAME_APP_MAX_SIZE);
     o = put_u16(p, o, (uint16_t)CHGAME_PAGE_SIZE);
     o = put_u16(p, o, (uint16_t)PROTO_MAX_PAYLOAD);
-    o = put_u32(p, o, uid[0]);
-    o = put_u32(p, o, uid[1]);
-    o = put_u32(p, o, uid[2]);
+    o = put_u32(p, o, hal_uid(0));
+    o = put_u32(p, o, hal_uid(1));
+    o = put_u32(p, o, hal_uid(2));
 
     send_frame(CMD_HELLO, p, o);
 }
@@ -346,13 +310,10 @@ static void do_run(void)
         return;
     }
     send_status(CMD_RUN, ST_OK);
-
-    /* Let the acknowledgement reach the host before the USB device vanishes.
-       Busy-loop, because SysTick is about to be torn down anyway. */
+    /* Let the acknowledgement reach the host before the USB device vanishes,
+       then start the program from a real reset (boot_reset detaches USB). */
     spin_ms(60);
-
-    led_set(LED_OFF);
-    jump_to_app();
+    boot_reset(CHGAME_BOOTREQ_RUN);
 }
 
 /* ---- developer self-update ---------------------------------------------------
@@ -398,7 +359,7 @@ static void do_dev_write_boot(const uint8_t *p, uint16_t len)
 
     /* Verify the staged image from flash BEFORE erasing anything. Past this
        point the device has no working bootloader until the copy completes. */
-    if (crc32_buf((const void *)CHGAME_APP_START, size) != crc) {
+    if (crc32_buf(FLASH_AT(CHGAME_APP_START), size) != crc) {
         send_status(CMD_DEV_WRITE_BOOT, ST_ERR_CRC);
         return;
     }
@@ -418,7 +379,7 @@ static void do_dev_write_boot(const uint8_t *p, uint16_t len)
     CDC_flush();
     spin_ms(60);
 
-    led_set(LED_BUSY);
+    hal_led(1);
     proto_shutdown();               /* detach cleanly; the host expects a drop */
 
     flash_selfupdate(CHGAME_APP_START, size);   /* never returns */
@@ -427,6 +388,8 @@ static void do_dev_write_boot(const uint8_t *p, uint16_t len)
 
 static void dispatch(uint8_t cmd)
 {
+    if (cmd != CMD_HELLO && cmd != CMD_STATUS && cmd != CMD_READ)
+        proto_claimed = 1;
     switch (cmd) {
         case CMD_HELLO:  do_hello();  break;
         case CMD_STATUS: do_status(); break;
@@ -527,36 +490,11 @@ static void rx_byte(uint8_t b)
     }
 }
 
-static uint8_t usb_started;
-
-
 void proto_init(void)
 {
     rx_state     = RX_SOF0;
     rx_last_tick = sys_ticks();
-    CDC_init();
-    usb_started = 1;
-}
-
-void proto_shutdown(void)
-{
-    if (!usb_started)
-        return;
-
-    USBFSD->INT_EN   = 0;
-    USBFSD->INT_FG   = 0xFF;
-    USBFSD->BASE_CTRL = 0;          /* drops the D+ pull-up: host sees a detach */
-    USBFSD->UDEV_CTRL = 0;
-
-    /* Release the PHY and stop clocking the peripheral. */
-    AFIO->CTLR &= ~(uint32_t)(AFIO_CTLR_USB_IOEN | AFIO_CTLR_UDP_PUE | AFIO_CTLR_UDM_PUE);
-    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_USBFS, DISABLE);
-
-    /* Give the host time to notice the disconnect before the application
-       potentially re-attaches. Busy-loop: SysTick is about to be torn down. */
-    spin_ms(30);
-
-    usb_started = 0;
+    usb_start();
 }
 
 void proto_task(void)
@@ -570,7 +508,6 @@ void proto_task(void)
         proto_rx_bytes++;
         rx_byte((uint8_t)b);
     }
-    proto_rx_calls++;
 
     /* Abandon a frame that stalled part-way through. Silent by design: this is
        recovery, not an error the host needs told about, and answering here
