@@ -1,0 +1,118 @@
+# A session at the table from the title screen, played with the buttons
+# alone (only the dice are scripted, for the tour): docs/gameplay.gif.
+#   python tools/chsim/chdrive.py --sim . tools/scripts/gameplay.txt docs/
+#
+# Spots (Classic, src/render/Zones.cpp): 0-5 place 4 5 6 8 9 10, 6-11 their
+# come odds, 12 COME, 13 FIELD, 14 DON'T PASS, 15 LAY, 16 PASS LINE, 17 ODDS,
+# 18 ANY 7, 19-22 hard 6 10 8 4, 23 YO, 24 ANY CRAPS, 25-28 the $1 $5 $25
+# $100 chips in the rack, 29 ROLL.
+say R 9
+rec start 3
+wait 100
+tap A
+wait 60
+# $10 on the pass line with the $5 chip, $5 on the field.
+tap A
+wait 14
+tap A
+wait 24
+goto 13 10
+tap A
+wait 24
+# Coming out: hold A on ROLL to shake, let go to throw. Yo-leven!
+goto 29 10
+wait 20
+say F 6 5
+hold A
+wait 50
+release
+idle 70
+# Again: 4-2, the point is six.
+say F 4 2
+hold A
+wait 40
+release
+idle 60
+# Odds behind the line: SELECT to the $25 chip, twice (5x on a six).
+goto 17 10
+tap SELECT
+wait 12
+tap A
+wait 14
+tap A
+wait 24
+# Place the 8 for $12: two $5 chips (SELECT round to $5)...
+tap SELECT
+wait 6
+tap SELECT
+wait 6
+tap SELECT
+wait 12
+goto 3 10
+tap A
+wait 14
+tap A
+wait 20
+# ...and two $1 chips, picked from the rack.
+goto 25 10
+tap A
+wait 14
+goto 3 10
+tap A
+wait 14
+tap A
+wait 20
+# A dollar on the hard 8.
+goto 21 10
+tap A
+wait 30
+say H
+# Four-four: hard eight! The place bet and the hardway pay and stay up.
+goto 29 10
+say F 4 4
+hold A
+wait 45
+release
+idle 60
+# Three-three: winner six, pay the line - and the odds come home.
+say F 3 3
+hold A
+wait 45
+release
+idle 70
+# Coming out on nine.
+say F 5 4
+hold A
+wait 40
+release
+idle 50
+# $5 in the Come.
+tap SELECT
+wait 12
+goto 12 10
+tap A
+wait 24
+say H
+# Six-two: the come bet moves to the 8 (the place 8 pays; easy, the hard 8 loses).
+goto 29 10
+say F 6 2
+hold A
+wait 45
+release
+idle 50
+# $10 odds on the come bet's 8.
+goto 9 10
+tap A
+wait 14
+tap A
+wait 30
+say H
+# Seven out: line away.
+goto 29 10
+say F 1 6
+hold A
+wait 45
+release
+idle 120
+say H
+rec stop gameplay

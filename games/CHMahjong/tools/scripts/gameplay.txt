@@ -1,0 +1,25 @@
+# A game from the title screen, as a player would play it: the README's
+# docs/gameplay.gif.
+#   python tools/chsim/chdrive.py --sim . tools/scripts/gameplay.txt docs/
+rec start 3
+wait 50
+tap A
+wait 25
+tap A
+wait 150
+solve 6 5
+wait 20
+# A hint (it costs $25), then take the pair it shows.
+tap SELECT
+wait 50
+takehint 6
+solve 2 5
+# The close-up: hold B and keep playing.
+hold B
+wait 20
+solve 4 5
+release
+wait 20
+solve 6 4
+wait 40
+rec stop gameplay

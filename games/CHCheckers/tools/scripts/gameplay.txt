@@ -1,0 +1,13 @@
+# The first moves of a game against the TOURIST from the title screen, played with the
+# pad (the moves are the game's own choice: chdrive's auto) -> gameplay.gif.
+wait 150
+tap A
+wait 30
+tap A
+wait 20
+rec start 4
+auto 22
+wait 60
+board
+rec stop gameplay
+snap end

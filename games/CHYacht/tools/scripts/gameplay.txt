@@ -1,0 +1,47 @@
+# README media: the title, a turn with a hold and a reroll, then a yacht.
+say R 2026
+say J T
+wait 150
+rec start 2
+wait 60
+tap A
+wait 50
+say F 5 5 2 3 5
+hold A
+wait 45
+release
+idle 0
+wait 45
+tap A
+tap RIGHT
+tap A
+tap RIGHT
+tap RIGHT
+tap RIGHT
+tap A
+wait 12
+tap DOWN
+say F 1 1 2 2 1
+hold A
+wait 35
+release
+idle 0
+wait 40
+tap UP
+wait 30
+tap A
+idle 0
+wait 30
+say F 6 6 6 6 6
+hold A
+wait 40
+release
+idle 0
+wait 40
+tap UP
+wait 25
+tap A
+wait 20
+idle 0
+wait 70
+rec stop gameplay

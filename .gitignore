@@ -1,0 +1,15 @@
+# Each game, utility and library keeps its own .gitignore (build/, out/, ...).
+# These apply everywhere.
+
+# The shared simulator builds into each game's tools/chsim/build/
+**/tools/chsim/build/
+
+# Python
+__pycache__/
+*.pyc
+
+# Editor and OS clutter
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,246 @@
+# The gameplay reel at the top of the README: a real deal played by the
+# rules (the moves were worked out by the host tests' sensible player and
+# written here as glove moves), then a cut to the end of a game and the win.
+#   python tools/chsim/chdrive.py --sim . tools/scripts/gameplay.txt docs
+# (then delete docs/sheet.png and docs/result.png).
+say O 5 0
+say G 1
+wait 12
+rec start 3
+waitstate 1 20
+say C 8 1
+wait 16
+tap A 4
+wait 8
+say C 7 1
+wait 16
+tap A 4
+wait 30
+say C 8 1
+wait 16
+tap A 4
+wait 8
+say C 10 1
+wait 16
+tap A 4
+wait 30
+say C 8 1
+wait 16
+tap A 4
+wait 8
+say C 12 1
+wait 16
+tap A 4
+wait 30
+tap B 4
+wait 22
+tap B 4
+wait 22
+tap B 4
+wait 22
+say C 1 1
+wait 14
+tap A 4
+wait 2
+tap A 4
+wait 34
+say C 1 1
+wait 16
+tap A 4
+wait 8
+say C 12 1
+wait 16
+tap A 4
+wait 30
+say C 11 1
+wait 16
+tap A 4
+wait 8
+say C 12 1
+wait 16
+tap A 4
+wait 30
+say C 11 1
+wait 14
+tap A 4
+wait 2
+tap A 4
+wait 34
+say C 1 1
+wait 14
+tap A 4
+wait 2
+tap A 4
+wait 34
+say C 11 1
+wait 16
+tap A 4
+wait 8
+say C 9 1
+wait 16
+tap A 4
+wait 30
+say C 12 4
+wait 16
+tap A 4
+wait 8
+say C 9 1
+wait 16
+tap A 4
+wait 30
+say C 1 1
+wait 16
+tap A 4
+wait 8
+say C 12 1
+wait 16
+tap A 4
+wait 30
+say C 10 2
+wait 16
+tap A 4
+wait 8
+say C 12 1
+wait 16
+tap A 4
+wait 30
+say C 10 1
+wait 16
+tap A 4
+wait 8
+say C 8 1
+wait 16
+tap A 4
+wait 30
+say C 12 4
+wait 16
+tap A 4
+wait 8
+say C 10 1
+wait 16
+tap A 4
+wait 30
+say C 12 1
+wait 16
+tap A 4
+wait 8
+say C 10 1
+wait 16
+tap A 4
+wait 30
+say C 1 1
+wait 16
+tap A 4
+wait 8
+say C 9 1
+wait 16
+tap A 4
+wait 30
+say C 11 1
+wait 16
+tap A 4
+wait 8
+say C 9 1
+wait 16
+tap A 4
+wait 30
+say C 12 1
+wait 16
+tap A 4
+wait 8
+say C 11 1
+wait 16
+tap A 4
+wait 30
+say C 7 2
+wait 16
+tap A 4
+wait 8
+say C 12 1
+wait 16
+tap A 4
+wait 30
+say C 7 1
+wait 16
+tap A 4
+wait 8
+say C 6 1
+wait 16
+tap A 4
+wait 30
+say C 9 8
+wait 16
+tap A 4
+wait 8
+say C 6 1
+wait 16
+tap A 4
+wait 30
+say C 9 1
+wait 14
+tap A 4
+wait 2
+tap A 4
+wait 34
+say C 10 6
+wait 16
+tap A 4
+wait 8
+say C 7 1
+wait 16
+tap A 4
+wait 30
+say C 1 1
+wait 16
+tap A 4
+wait 8
+say C 8 1
+wait 16
+tap A 4
+wait 30
+say C 6 10
+wait 16
+tap A 4
+wait 8
+say C 8 1
+wait 16
+tap A 4
+wait 30
+tap B 4
+wait 22
+say C 1 1
+wait 16
+tap A 4
+wait 8
+say C 11 1
+wait 16
+tap A 4
+wait 30
+tap B 4
+wait 22
+tap B 4
+wait 22
+tap B 4
+wait 22
+say C 1 1
+wait 14
+tap A 4
+wait 2
+tap A 4
+wait 34
+expect up=5 held=0 moves=34
+wait 30
+say G 11
+waitstate 1 5
+say W 16
+wait 30
+say C 6 1
+wait 14
+tap A 4
+wait 2
+tap A 4
+waitstate 3
+wait 780
+tap A
+wait 150
+rec stop gameplay

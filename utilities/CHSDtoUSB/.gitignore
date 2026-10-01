@@ -1,0 +1,11 @@
+# Build output (build/release, build/test)
+build/
+
+# Python
+__pycache__/
+*.pyc
+
+# Editor and OS clutter
+.vscode/
+.DS_Store
+Thumbs.db

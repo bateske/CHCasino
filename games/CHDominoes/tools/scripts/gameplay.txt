@@ -1,0 +1,15 @@
+# The README's reel (docs/gameplay.gif): the title, then a round of ALL
+# FIVES against the REGULAR, from the deal to the firecrackers.
+#   python tools/chsim/chdrive.py --sim . tools/scripts/gameplay.txt out/gameplay
+wait 8
+rec start 3
+wait 150
+tap DOWN
+wait 12
+tap UP
+wait 30
+say G 0 1 20 1 100
+round
+wait 20
+rec stop gameplay
+snap end

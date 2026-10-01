@@ -1,0 +1,136 @@
+# CHGame board definition.
+#
+# Deliberately ONE board with ONE obvious upload behaviour. The upstream CH32
+# core exposes menus for clock, optimisation, debug level, C runtime and
+# programmer choice; almost none of that is meaningful to someone who just
+# wants to press Upload, and every extra menu is another way to end up with a
+# board that will not enumerate.
+#
+# The advanced menus that remain are the ones a game actually needs to trade
+# off: optimisation, float printf support, which core peripherals are compiled
+# in, and whether USB Serial is. Programmer selection is NOT offered: normal
+# uploads always go through the CHGame bootloader over USB CDC. Factory
+# provisioning and recovery use wchisp directly and are documented in
+# docs/recovery.md rather than surfaced here.
+
+menu.opt=Optimize
+menu.rtlib=C Runtime Library
+menu.periph=Peripherals
+menu.usb=USB
+
+CHGame.name=CHGame
+
+CHGame.build.core=arduino
+CHGame.build.board=CHGame
+CHGame.build.mcu=QingKe-V4C
+CHGame.build.series=CH32X035
+CHGame.build.chip=CH32X035G8U
+CHGame.build.variant=CH32X035/CHGame
+CHGame.build.variant_h=variant_CHGame.h
+CHGame.build.march=rv32imacxw
+CHGame.build.mabi=ilp32
+CHGame.build.math_lib_gcc=-lm
+CHGame.build.ch_extra_lib=-lprintf
+
+# Relocated application: the first 12 KB of flash belong to the bootloader.
+# This script and the numbers below are generated from bootloader/src/chgame_map.h
+# by tools/gen_ld.py, so they cannot drift from what the bootloader enforces.
+CHGame.build.ldscript=link_chgame_app.ld
+CHGame.upload.maximum_size=50944
+# RAM for .data + .bss (and the heap above them): the 20,464 B after the boot
+# magic, less the fixed 2 KB stack the linker script reserves at the top. The
+# link already fails past this point (.stack overlaps .bss), so reporting it as
+# the maximum makes the IDE's percentage the real one. The stack is separate.
+CHGame.upload.maximum_data_size=18416
+# The IDE's "Low memory available" warning, as a percentage of the above. Its
+# default of 75% fires for any sketch with a framebuffer; at 95% it means under
+# ~900 B left for the heap.
+CHGame.build.warn_data_percentage=95
+
+# USB flags come from the USB menu below.
+CHGame.build.flags.clock=-DSYSCLK_FREQ_48MHz_HSI=48000000 -DF_CPU=48000000
+
+# The uploader performs the whole app -> bootloader -> app transition itself,
+# so the IDE must NOT also touch the port: a second 1200-baud touch, or the IDE
+# racing us to grab the rediscovered port, is a reliable way to break an upload
+# that would otherwise work.
+CHGame.upload.tool=chgame_upload
+CHGame.upload.protocol=chgame
+CHGame.upload.use_1200bps_touch=false
+CHGame.upload.wait_for_upload_port=false
+CHGame.upload.native_usb=true
+
+# Burn Bootloader writes this image through the factory ISP. Shipped with the
+# platform so a user never has to locate or build a bootloader binary.
+CHGame.bootloader.tool=chgame_upload
+CHGame.bootloader.file=CHGame/chgame_bootloader.bin
+
+CHGame.vid.0=0x16C0
+CHGame.pid.0=0x27DD
+
+CHGame.menu.opt.osstd=Smallest (-Os default)
+CHGame.menu.opt.osstd.build.flags.optimize=-Os
+# Link-time optimisation: the core, the libraries and the sketch are optimised
+# as one program. The link needs no extra flag - gcc sees the LTO objects and
+# runs the plugin itself. Typically 1-5 KB smaller than -Os (CHChess only fits
+# with it). Not the default yet: links are slower and the map file is harder
+# to read, since functions merge and gain .constprop/.part suffixes.
+CHGame.menu.opt.oslto=Smallest + LTO (-Os -flto)
+CHGame.menu.opt.oslto.build.flags.optimize=-Os -flto
+CHGame.menu.opt.o1std=Fast (-O1)
+CHGame.menu.opt.o1std.build.flags.optimize=-O1
+CHGame.menu.opt.o2std=Faster (-O2)
+CHGame.menu.opt.o2std.build.flags.optimize=-O2
+CHGame.menu.opt.o3std=Fastest (-O3)
+CHGame.menu.opt.o3std.build.flags.optimize=-O3
+CHGame.menu.opt.ogstd=Debug (-Og)
+CHGame.menu.opt.ogstd.build.flags.optimize=-Og
+
+CHGame.menu.rtlib.nano=Newlib Nano (default)
+CHGame.menu.rtlib.nano.build.flags.ldflags=--specs=nano.specs --specs=nosys.specs
+CHGame.menu.rtlib.nanofp=Newlib Nano + Float Printf
+CHGame.menu.rtlib.nanofp.build.flags.ldflags=--specs=nano.specs --specs=nosys.specs -u _printf_float
+CHGame.menu.rtlib.full=Newlib Standard
+CHGame.menu.rtlib.full.build.flags.ldflags=--specs=nosys.specs
+
+# Which core peripherals are compiled in. core.a is linked --whole-archive, so
+# Serial1's constructor and the USART and timer IRQ handlers are always
+# reachable and --gc-sections cannot drop them: leaving them in costs about
+# 4 KB of the 50,944 B app region even in a sketch that never touches them.
+# "Game" is the default because that is what the console is (USB serial, SPI
+# display, buttons, a piezo driven by CHGameSound) and games need the room.
+# It compiles out Serial1, tone(), analogWrite() PWM and HardwareTimer; USB
+# Serial, SPI, Wire, analogRead() and attachInterrupt() are untouched.
+#
+# The defines live in their own property, appended to the compiler flags in
+# platform.txt, rather than in compiler.*.extra_flags or build.extra_flags:
+# sketches and CLI users override those, and doing so silently dropped these
+# flags once already.
+CHGame.menu.periph.game=Game: USB Serial only, no Serial1/tone/PWM (default, ~4 KB smaller)
+CHGame.menu.periph.game.build.flags.periph=-DUART_MODULE_ONLY -DTIM_MODULE_ONLY
+CHGame.menu.periph.full=Full: Serial1 on H1, tone(), PWM, HardwareTimer
+CHGame.menu.periph.full.build.flags.periph=
+
+# Serial is native USB CDC, and the 1200-baud upload handshake is handled inside
+# the USB interrupt (cores/arduino/ch32/usb). Sketches need no special code.
+#
+# "Upload only" keeps the USB device and that handshake - both live in the
+# interrupt's control path - and compiles out Serial itself (the class,
+# Stream/Print and the CDC data path): about 0.6-0.7 KB. The COM port still
+# appears and Upload still works with no button presses. Using Serial in that
+# mode is a compile error, on purpose (see WSerial.h).
+#
+# There is deliberately no "None": a sketch built without USB cannot be
+# re-uploaded while it runs, which breaks the promise that every sketch stays
+# uploadable.
+CHGame.menu.usb.serial=Serial (default)
+CHGame.menu.usb.serial.build.usb_flags=-DUSE_CHGAME_USB_CDC
+CHGame.menu.usb.uploadonly=Upload only: no Serial (~0.7 KB smaller)
+CHGame.menu.usb.uploadonly.build.usb_flags=-DUSE_CHGAME_USB_BOOTONLY
+
+CHGame.build.flags.debug=-DNDEBUG
+CHGame.build.flags.fp=
+CHGame.build.enable_usb=
+CHGame.build.usb_speed=
+CHGame.build.peripheral_pins=
+CHGame.build.startup_file=

@@ -1,0 +1,72 @@
+# The README's gameplay reel (docs/gameplay.gif), played with the buttons and
+# recorded at its highlights: a toss-up buzzed in and solved, then round 1 -
+# a spin, a consonant picked off the board, a vowel bought, a BANKRUPT, and
+# the CPU players taking over.
+#   python tools/chsim/chdrive.py --sim . tools/scripts/gameplay.txt out/gameplay
+# (then copy out/gameplay/gameplay.gif to docs/)
+say R 7
+say U 1 0
+say J P
+rec start 3
+# The toss-up: panels turn until you buzz in, then you type the answer.
+wait 270
+tap A
+wait 70
+snap 01_buzzed
+tap A
+tap RIGHT
+tap A
+wait 5
+say V 1
+wait 200
+snap 02_tossup_won
+rec pause
+say U 0 0
+wait 250
+rec resume
+# Round 1: charge the spin, let go, and pick a letter when it lands.
+say F 4
+hold A
+wait 40
+release
+wait 350
+snap 03_landed
+wait 60
+tap RIGHT
+tap RIGHT
+tap RIGHT
+tap RIGHT
+tap RIGHT
+tap RIGHT
+tap RIGHT
+tap RIGHT
+tap RIGHT
+tap RIGHT
+wait 3
+tap A
+wait 150
+snap 04_letter_lit
+# Buy a vowel.
+tap RIGHT
+wait 3
+tap A
+wait 10
+tap A
+wait 150
+snap 05_vowel
+# Spin again, and land on BANKRUPT.
+say F 22
+hold A
+wait 30
+release
+wait 520
+snap 06_bankrupt
+# The CPU players take their turns.
+wait 400
+snap 07_cpu
+rec pause
+wait 170
+rec resume
+wait 300
+snap 08_cpu_again
+rec stop gameplay

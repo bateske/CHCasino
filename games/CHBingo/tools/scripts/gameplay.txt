@@ -1,0 +1,49 @@
+# A round played with the buttons only: nine cards, swiping and daubing.
+#   python tools/chsim/chdrive.py --sim . tools/scripts/gameplay.txt out/gameplay
+say R 21
+say J P
+wait 80
+tap UP
+tap UP
+tap UP
+tap UP
+tap UP
+tap UP
+wait 5
+snap 01_nine_cards
+tap A
+wait 110
+snap 02_first_call
+tap RIGHT 2
+tap A 2
+tap RIGHT 2
+tap A 2
+tap RIGHT 2
+tap A 2
+tap RIGHT 2
+tap A 2
+tap RIGHT 2
+tap A 2
+snap 03_swiping
+tap RIGHT 2
+tap A 2
+tap RIGHT 2
+tap A 2
+tap RIGHT 2
+tap A 2
+tap RIGHT 2
+tap A 2
+wait 80
+snap 04_second_call
+tap LEFT 2
+tap A 2
+tap LEFT 2
+tap A 2
+tap LEFT 2
+tap A 2
+tap LEFT 2
+tap A 2
+snap 05_back
+wait 100
+gif round 240 2
+perf

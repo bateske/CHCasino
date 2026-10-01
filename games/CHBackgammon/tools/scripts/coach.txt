@@ -1,0 +1,75 @@
+# The hint (SELECT), the coach on a poor play and on the best, and the
+# mirrored board (HOME LEFT).
+say G 0 1 5
+say D 3143
+wait 30
+tap A
+waitturn 6
+tap SELECT
+wait 30
+snap hint
+# Turn the coach on (options), and play badly: 24/20 6/5 with the 4-1? (the
+# opening 3-1 was the CPU's; this is our first roll).
+say J O
+wait 20
+tap DOWN
+tap DOWN
+tap DOWN
+tap DOWN
+tap A
+tap B
+wait 30
+say X 0 w 24:2 13:5 8:3 6:5 r 24:2 13:5 8:3 6:5
+say D 31
+wait 30
+waitturn 0
+tap A
+waitturn 6
+move 24 21
+waitturn 4
+move 24 23
+waitturn 30
+snap coach_bad
+tap B
+waitturn 4
+tap B
+waitturn 4
+move 8 5
+waitturn 4
+move 6 5
+waitturn 30
+snap coach_best
+# Coach off again; the board mirrored.
+say J O
+wait 20
+tap DOWN
+tap DOWN
+tap A
+tap DOWN
+tap DOWN
+tap A
+tap B
+wait 30
+say X 0 w 24:2 13:5 8:3 6:5 r 24:2 13:5 8:3 6:5
+say D 6431
+wait 30
+waitturn 0
+tap A
+waitturn 6
+snap mirror_roll
+move 24 18
+waitturn 4
+move 13 9
+waitturn 6
+snap mirror_moved
+tap A
+waitturn 10
+snap mirror_cpu
+# Back to HOME RIGHT for whatever runs next.
+say J O
+wait 20
+tap DOWN
+tap DOWN
+tap A
+tap B
+wait 30

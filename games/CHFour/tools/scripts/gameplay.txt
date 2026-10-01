@@ -1,0 +1,16 @@
+# The README's first picture: a whole game against THE BOSS, the dealer
+# talking it through, to the end and the result.
+say G 0 2 0 3
+wait 30
+waitturn 10
+rec start 3
+col 4
+waitturn 25
+col 3
+waitturn 25
+col 5
+waitturn 25
+auto
+waitover 90
+rec stop gameplay
+board

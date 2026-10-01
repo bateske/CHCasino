@@ -1,0 +1,36 @@
+# A gameplay reel against the EXPERT (docs/gameplay.gif), played with the D-pad
+# and glove as a player would; the dice are stacked, the CPU plays its own moves:
+# the opening, a hit, the CPU entering from the bar, doubles with a two-step hit,
+# and the CPU hitting back.
+#   python tools/chsim/chdrive.py --sim . tools/scripts/gameplay.txt out/gameplay
+say G 0 1 7
+say D 3164625344466454
+wait 30
+rec start 2
+tap A
+waitturn 12
+move 8 5
+waitturn 4
+move 6 5
+waitturn 10
+tap A
+waitturn 12
+tap A
+waitturn 12
+move 13 11
+waitturn 4
+move 24 18
+waitturn 10
+tap A
+waitturn 12
+tap A
+waitturn 12
+move 13 9
+waitturn 4
+move 13 9
+waitturn 4
+move 11 3
+waitturn 10
+tap A
+waitturn 20
+rec stop gameplay
