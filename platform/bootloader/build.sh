@@ -80,6 +80,12 @@ fi
 ASRC=( "$SRC/startup_chgame_boot.S" )
 
 rm -rf "$OUT"; mkdir -p "$OUT/obj"
+if [ -z "$LTO" ]; then
+  # Size analysis only: without LTO the image does not fit, so link against a
+  # roomier copy of the script. Never flash a --nolto build.
+  sed -e 's/LENGTH = 12288/LENGTH = 16384/' -e 's/_etext <= 0x3000/_etext <= 0x4000/' "$LD" > "$OUT/analysis.ld"
+  LD="$OUT/analysis.ld"
+fi
 OBJS=()
 for f in "${ASRC[@]}"; do
   o="$OUT/obj/$(basename "$f").o"; OBJS+=("$o")

@@ -2,8 +2,37 @@
 #include "proto.h"
 #include "crc16.h"
 
-int t_fail, t_pass;
+#include <sys/mman.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+static t_counts_t t_counts_local;
+t_counts_t *t_counts = &t_counts_local;
 const char *t_name;
+
+void t_run(const char *name, void (*fn)(void))
+{
+    if (t_counts == &t_counts_local) {
+        t_counts = mmap(NULL, sizeof *t_counts, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+        *t_counts = t_counts_local;
+    }
+    t_name = name;
+    fflush(stdout); fflush(stderr);
+    pid_t pid = fork();
+    if (pid == 0) {
+        host_init();
+        frame_reset();
+        fn();
+        fflush(stdout); fflush(stderr);
+        _exit(0);
+    }
+    int st;
+    waitpid(pid, &st, 0);
+    if (!WIFEXITED(st) || WEXITSTATUS(st)) {
+        t_counts->fail++;
+        fprintf(stderr, "FAIL %s: the test process died (status 0x%x)\n", name, st);
+    }
+}
 
 uint32_t le32(const uint8_t *p) { return p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24; }
 void put32(uint8_t *p, uint32_t v) { p[0] = (uint8_t)v; p[1] = (uint8_t)(v >> 8); p[2] = (uint8_t)(v >> 16); p[3] = (uint8_t)(v >> 24); }

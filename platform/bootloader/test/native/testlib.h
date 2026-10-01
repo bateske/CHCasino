@@ -7,7 +7,10 @@
 #include <stdlib.h>
 #include "host.h"
 
-extern int t_fail, t_pass;
+typedef struct { int fail, pass; } t_counts_t;
+extern t_counts_t *t_counts;
+#define t_fail (t_counts->fail)
+#define t_pass (t_counts->pass)
 extern const char *t_name;
 
 #define CHECK(cond, ...) do { \
@@ -16,7 +19,11 @@ extern const char *t_name;
            fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); } } while (0)
 
 void frame_reset(void);
-#define TEST(fn) do { t_name = #fn; host_init(); frame_reset(); fn(); } while (0)
+/* Each test runs in its own process, so code that keeps state in statics
+   (as the bootloader does, from a zeroed .bss) starts fresh every time, as
+   it does after a real reset. */
+void t_run(const char *name, void (*fn)(void));
+#define TEST(fn) t_run(#fn, fn)
 
 /* Protocol frames (CRC-16/CCITT-FALSE over ver|cmd|len|payload). */
 void frame_push(uint8_t cmd, const uint8_t *payload, uint16_t len);

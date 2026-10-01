@@ -20,6 +20,11 @@
 #define CHBOOT_HAL_H
 #include <stdint.h>
 
+/* CHBOOT_APP 1: the dry-run build that runs as a program (build.sh app). */
+#ifndef CHBOOT_APP
+#define CHBOOT_APP 0
+#endif
+
 /* Button bits are the port bits themselves: GPIOB 1/3/4/6/7/8 and GPIOC 14/15
  * do not overlap, so one 16-bit mask holds them all. */
 #define BTN_A       (1u << 1)

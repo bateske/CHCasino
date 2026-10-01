@@ -21,6 +21,24 @@
 #include "menu.h"
 #endif
 
+#if CHBOOT_APP
+/* The dry-run build runs as a program under any bootloader: no USB, no flash
+   writes, straight into the menu. */
+void boot_reset(uint32_t reason)
+{
+    bootreq_set(reason);
+    hal_reset();
+}
+
+void boot_main(void)
+{
+    sys_init();
+    hal_pins_init();
+    menu_main(APP_INVALID_NO_META);
+    for (;;) { }
+}
+#else
+
 void boot_reset(uint32_t reason)
 {
     proto_shutdown();
@@ -92,3 +110,4 @@ void boot_main(void)
 #endif
     usb_mode();
 }
+#endif /* CHBOOT_APP */

@@ -46,6 +46,7 @@ sys.path.insert(0, str(REPO / "platform" / "libraries" / "CHSd" / "tools"))
 sys.path.insert(0, str(REPO / "tools"))
 import fatimg   # noqa: E402
 import chgpack  # noqa: E402
+sys.path.insert(0, str(HERE))
 
 HOST = ["host_hal.c", "sd_model.c", "lcd_model.c", "testlib.c"]
 CORE = ["boot.c", "bootreq.c", "appmeta.c", "crc32.c", "crc16.c", "update.c", "proto.c"]
@@ -227,6 +228,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--quick", action="store_true")
     ap.add_argument("-k", default="", help="run only suites whose name contains this")
+    ap.add_argument("--pin-frames", action="store_true", help="record the current menu frames as the reference")
     a = ap.parse_args()
     BUILD.mkdir(exist_ok=True)
     ok = check_constants()
@@ -239,14 +241,15 @@ def main():
     for name, main_c, defs, srcs in suites:
         if a.k in name:
             ok &= run(name, build(name, main_c, defs, srcs))
-    if "sd" in "sd" and a.k in "sd":
+    if a.k in "sd":
         imgs, lay, pk = build_images(a.quick)
         spec = sd_spec(imgs, lay, pk, a.quick)
         ok &= run("sd", build("sd", "test_sd.c", sd_defs, sd_srcs), spec)
     if menu_built and a.k in "boot":
-        imgs, lay, pk = build_images(a.quick)
+        if a.k not in "sd":
+            imgs, lay, pk = build_images(a.quick)
         import boot_cases  # noqa: E402
-        ok &= boot_cases.run_all(BUILD, build, run, imgs, lay, pk, a.quick)
+        ok &= boot_cases.run_all(BUILD, build, run, imgs, lay, pk, a.quick, a.pin_frames)
     print("ALL PASSED" if ok else "SOME TESTS FAILED")
     return 0 if ok else 1
 

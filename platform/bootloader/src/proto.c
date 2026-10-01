@@ -490,8 +490,14 @@ static void rx_byte(uint8_t b)
     }
 }
 
+/* Idempotent: the menu starts USB and may then hand over to USB mode in the
+   middle of a frame, which must not lose the parser's place. */
 void proto_init(void)
 {
+    static uint8_t started;
+    if (started)
+        return;
+    started = 1;
     rx_state     = RX_SOF0;
     rx_last_tick = sys_ticks();
     usb_start();

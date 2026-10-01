@@ -48,6 +48,7 @@ typedef struct {
     uint32_t erase_count[CHGAME_FLASH_SIZE / CHGAME_PAGE_SIZE];
     uint32_t boot_region_writes;    /* erase/program below APP_START (must stay 0) */
     uint32_t selfupdate_calls;
+    uint8_t  card_dies_on_flash;     /* the card stops answering once flash is first written */
 
     /* buttons: the mask from the last event whose time has passed */
     host_key_t keys[HOST_MAX_KEYS];
