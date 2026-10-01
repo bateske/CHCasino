@@ -235,7 +235,8 @@ def main():
     menu_built = (SRC / "menu.c").exists()
     suites = [("core_nomenu", "test_core.c", ["-DCHBOOT_MENU=0", "-DCHGAME_ALLOW_SELFUPDATE=1"], CORE)]
     if menu_built:
-        suites.append(("core_menu", "test_core.c", ["-DCHBOOT_MENU=1", "-DCHGAME_ALLOW_SELFUPDATE=0"], CORE + MENU))
+        suites.append(("core_menu", "test_core.c", ["-DCHBOOT_MENU=1", "-DCHGAME_ALLOW_SELFUPDATE=1"], CORE + MENU))
+        suites.append(("core_locked", "test_core.c", ["-DCHBOOT_MENU=1", "-DCHGAME_ALLOW_SELFUPDATE=0"], CORE + MENU))
     sd_srcs = CORE + MENU if menu_built else CORE + ["sd.c", "fat.c", "chg.c"]
     sd_defs = ["-DCHBOOT_MENU=" + ("1" if menu_built else "0")]
     for name, main_c, defs, srcs in suites:

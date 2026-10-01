@@ -4,8 +4,11 @@
 #   ./build.sh [MODE] [--nolto]
 #
 # MODE
-#   release   the SD game menu bootloader (default)
-#   dev       release + developer self-update (DEV_UNLOCK/DEV_WRITE_BOOT)
+#   release   the SD game menu bootloader, with the developer self-update
+#             (DEV_UNLOCK/DEV_WRITE_BOOT) that lets a later bootloader be
+#             installed over USB, as the 0.2.4 bootloader allows (default)
+#   locked    release without self-update: bootloader changes then need the
+#             BOOT button and the factory ISP (production option)
 #   nomenu    no SD menu: the old boot decision on the new update path (HW2a)
 #   app       the menu as an ordinary program at 0x3000 (dry run, no USB and no
 #             flash writes) for testing the card and the panel under ANY
@@ -20,7 +23,7 @@ MODE=release
 LTO=-flto
 for a in "$@"; do
   case "$a" in
-    release|dev|nomenu|app) MODE="$a" ;;
+    release|locked|nomenu|app) MODE="$a" ;;
     --nolto) LTO= ;;
     *) echo "unknown argument: $a" >&2; exit 1 ;;
   esac
@@ -50,10 +53,10 @@ SRC="$HERE/src"
 USB="$HERE/vendor/usbcdc"
 SHARED="$HERE/shared"
 
-SELFUPDATE=0; MENU=1; APPDEF=; LD="$HERE/ld/link_boot.ld"
+SELFUPDATE=1; MENU=1; APPDEF=; LD="$HERE/ld/link_boot.ld"
 case "$MODE" in
-  dev)    SELFUPDATE=1 ;;
-  nomenu) MENU=0; SELFUPDATE=1 ;;
+  locked) SELFUPDATE=0 ;;
+  nomenu) MENU=0 ;;
   app)    APPDEF="-DCHBOOT_APP=1"; LD="$HERE/ld/link_app.ld" ;;
 esac
 
@@ -62,7 +65,7 @@ DEFS="-DCH32X035 -DSYSCLK_FREQ_48MHz_HSI=48000000 -DF_CPU=48000000 -DCHGAME_IMAG
 DEFS="$DEFS -DCHGAME_ALLOW_SELFUPDATE=$SELFUPDATE -DCHBOOT_MENU=$MENU $APPDEF"
 INC="-I$SHARED -I$SRC -I$USB -I$SPL -I$SPL/Core -I$SPL/Peripheral/inc"
 WARN="-Wall -Wextra -Wundef -Werror=implicit-function-declaration"
-OPT="-Os $LTO -ffunction-sections -fdata-sections -fno-common -msmall-data-limit=8 -msave-restore"
+OPT="-Os $LTO -ffunction-sections -fdata-sections -fno-common -msmall-data-limit=8 -msave-restore -fno-jump-tables ${CHBOOT_EXTRA_CFLAGS:-}"
 CFLAGS="$ARCH $DEFS $INC $WARN $OPT -std=gnu11 -g"
 
 CSRC=(

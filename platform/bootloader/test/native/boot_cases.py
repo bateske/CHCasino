@@ -78,10 +78,37 @@ def run_all(build_dir, build, run, imgs, lay, pk, quick, pin=False):
     for old in fdir.glob("*"):
         old.unlink()
     from run_tests import CORE, MENU   # noqa: E402
-    exe = build("boot", "test_boot.c", ["-DCHBOOT_MENU=1", "-DCHGAME_ALLOW_SELFUPDATE=0"], CORE + MENU)
+    exe = build("boot", "test_boot.c", ["-DCHBOOT_MENU=1", "-DCHGAME_ALLOW_SELFUPDATE=1"], CORE + MENU)
     ok = run("boot", exe, mpath, fdir)
+    real = HERE.parents[3] / "out" / "sdcard.img"
+    if real.exists():
+        ok &= run_real(build_dir, exe, real, fdir)
+    else:
+        print(f"{'boot_real':12s} {'skip':6s} no out/sdcard.img (python tools/sdcard/mkcard.py --image out/sdcard.img)")
     ok &= check_frames(fdir, pin)
     return ok
+
+
+def run_real(build_dir, exe, img, fdir):
+    from run_tests import run   # noqa: E402
+    vol = fatimg.FatVolume(str(img))
+    g, _, _ = vol.find("GAMES", is_dir=True)
+    pkgs = {}
+    for raw, attr, _, _ in vol.listdir(g):
+        if attr & 0x10 or raw[8:11] != b"CHG":
+            continue
+        name = raw[:8].decode().rstrip() + ".CHG"
+        pkgs[name] = vol.read_file("GAMES/" + name)
+    pkdir = build_dir / "realpk"
+    pkdir.mkdir(exist_ok=True)
+    man = [f"img fat32 {img}"]
+    for n in sorted(pkgs, key=lambda n: display_title(n, pkgs[n])):
+        (pkdir / n).write_bytes(pkgs[n])
+        info = chgpack.parse(pkgs[n])
+        man.append(f"pkg {n} 0 {info['payload_bytes']} {info['payload_crc32']:x} {pkdir / n}")
+    mpath = build_dir / "real_manifest.txt"
+    mpath.write_text("\n".join(man) + "\n")
+    return run("boot_real", exe, mpath, fdir, "real")
 
 
 def check_frames(fdir, pin):
@@ -94,9 +121,14 @@ def check_frames(fdir, pin):
         im.save(ppm.with_suffix(".png"))
         now[ppm.stem] = hashlib.sha256(im.tobytes()).hexdigest()
     if pin or not pinned:
-        pinned_path.write_text(json.dumps(now, indent=1, sort_keys=True) + "\n")
+        if not pin:
+            pinned.clear()
+        pinned.update(now)
+        pinned_path.write_text(json.dumps(pinned, indent=1, sort_keys=True) + "\n")
         print(f"{'frames':12s} {'pinned':6s} {len(now)} frames recorded in frames.json")
         return True
-    diff = sorted(k for k in set(now) | set(pinned) if now.get(k) != pinned.get(k))
+    # real_* frames come from out/sdcard.img, which only exists after mkcard.py
+    keys = set(now) | {k for k in pinned if not k.startswith("real_")}
+    diff = sorted(k for k in keys if now.get(k) != pinned.get(k))
     print(f"{'frames':12s} {'ok' if not diff else 'FAILED':6s} {len(now)} frames vs frames.json" + (f": changed {diff}" if diff else ""))
     return not diff

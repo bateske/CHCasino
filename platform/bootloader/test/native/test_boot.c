@@ -311,6 +311,32 @@ static void t_powercut_sweep(void)
     CHECK(bad == 0, "power cut at each of %u flash operations of an SD install", total);
 }
 
+/* The real card from tools/sdcard/mkcard.py: install every program in menu
+   order, each over the one before, and check what is installed each time. */
+static void t_real_card(void)
+{
+    card(img_fat32);
+    B->limit_us = 2000000;
+    CHECK(host_boot() == END_HANG, "real card: menu");
+    lcd_sane("real menu");
+    snap("real_menu");
+    host_keys_clear();
+    int sel = 0;
+    for (int i = 0; i < npk; i++) {
+        B->limit_us = 8000000;
+        go_to(800, sel, i);
+        press(800 + 150u * (uint32_t)(i > sel ? i - sel : sel - i) + 200, BTN_A);
+        int end = host_boot();
+        CHECK(end == END_RESET && installed_is(pk[i].name), "%s installs (end %d)", pk[i].name, end);
+        CHECK(host_boot() == END_JUMP, "%s starts", pk[i].name);
+        CHECK(B->boot_region_writes == 0, "boot region untouched");
+        host_power_cycle();
+        host_keys_clear();
+        sel = i;                             /* preselected next time */
+        if (i == 9) { B->limit_us = 2000000; host_boot(); snap("real_menu_installed"); host_power_cycle(); }
+    }
+}
+
 int main(int argc, char **argv)
 {
     char line[1024];
@@ -332,6 +358,10 @@ int main(int argc, char **argv)
         }
     }
     fclose(f);
+    if (argc > 3 && !strcmp(argv[3], "real")) {
+        TEST(t_real_card);
+        return test_summary();
+    }
     TEST(t_no_card_runs_app);
     TEST(t_no_card_no_app);
     TEST(t_empty_card_runs_app);
