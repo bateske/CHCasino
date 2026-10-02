@@ -45,6 +45,7 @@ void setReadOnly(bool ro);
 bool readOnly();
 void mediaChanged();                  // new medium (or none): un-eject, tell the host
 void detach();                        // drop off the bus
+uint8_t *buffer();                    // 512 B the sketch may use while not busy()
 
 // The serial function carries no data stream, just a way to ask for status:
 int cdcRead();                                // last byte the host sent, or -1

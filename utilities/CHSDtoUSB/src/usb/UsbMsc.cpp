@@ -592,6 +592,8 @@ void detach() {
     st = OFF;
 }
 
+uint8_t *buffer() { return sector; }
+
 int cdcRead() {
     int b = cdcRxByte;
     cdcRxByte = -1;
