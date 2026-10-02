@@ -25,8 +25,15 @@ highlighted. It is marked with a red chip.
   second. The screen shows "INSTALLING" and a progress bar. The game then starts.
   The new game is checked completely before anything is erased, so a damaged
   file never costs you the game you had.
-- **Back to the menu.** Switch the CHGame off and on, the same as an Arduboy
-  FX. A game that resets itself also comes back to the menu.
+- **Back to the menu.** Hold **START for 3 seconds** in any game. Switching
+  the CHGame off and on works too, as on an Arduboy FX. The games don't
+  mention it on screen: it is a feature of the platform, like a phone's home
+  button.
+  - Without a card, or under the old bootloader with no menu, the same hold
+    simply restarts the game.
+  - Anything since the game last saved is lost, as when switching off. The
+    first press of START still does its usual job (pause, or start on a
+    title screen) before the 3 s are up.
 - **No card, or a card without games.** The installed game starts straight
   away, as it did before the menu existed.
 
@@ -69,8 +76,8 @@ practice you can switch games as often as you like.
 
 **Copying files without a card reader.** Pick **SD CARD READER** in the
 menu. The CHGame becomes a USB drive on the PC. Copy games into `GAMES/`,
-eject the drive, then hold B for a second (or switch off and on) to go
-back to the menu.
+eject the drive, then hold B for a second (or START for 3 s, or switch off
+and on) to go back to the menu.
 
 ## Messages
 
@@ -105,8 +112,14 @@ name is shown instead of a title.
   Copy `MYGAME.CHG` to `GAMES/`. [chg-format.md](chg-format.md) describes the
   file and what a game needs to know. In short: nothing changes for your
   sketch.
-- **Returning to the menu from a game.** Call `NVIC_SystemReset()`. Any reset
-  that is not an upload request shows the menu.
+- **Returning to the menu from a game.** Every CHCasino game has it built in.
+  The shared core (`src/CHGame.*`) checks for START held 3 s in
+  `pollButtons()`.
+  - `arduboy.exitToMenu()` leaves on purpose, for example from a QUIT item.
+  - `arduboy.startExits = false` in `setup()` turns the hold off, for a game
+    that needs long START holds for itself.
+  - Without CHCasino's core, call `NVIC_SystemReset()`. Any reset that is not
+    an upload request shows the menu.
 - **Recovery.**
   - Hold **B** while switching on: the bootloader skips the card and the
     menu and waits in USB upload mode.

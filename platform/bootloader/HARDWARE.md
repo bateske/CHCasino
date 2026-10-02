@@ -143,6 +143,14 @@ expected result.
 - [ ] Hold B while switching on: the screen does not change, and the LED
       blinks at 2 Hz (USB mode). Release B, press it again: the menu.
 
+**Leaving a game**
+- [ ] In a game, hold START: after 3 s the menu appears, with that game
+      selected. Releasing START then does nothing.
+- [ ] A short press of START still does the game's own thing (pause, or
+      start on a title screen).
+- [ ] With no card, the same hold restarts the game.
+- [ ] In the SD card reader, START held 3 s also returns to the menu.
+
 **Cards**
 - [ ] No card: the installed game starts straight away. With no game
       installed: "NO GAMES FOUND" and USB mode.

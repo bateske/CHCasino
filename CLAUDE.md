@@ -188,6 +188,11 @@ buttons are needed.
   the menu as INSTALLED PROGRAM if it is not on the card.
 - **Uploads work while the menu is on screen**, and so do `device.py run`
   and the debug protocol.
+- **Holding START for 3 s** in any game goes back to the menu (the shared
+  core's `pollButtons()`; `arduboy.startExits = false` opts out,
+  `arduboy.exitToMenu()` leaves on purpose). The games don't show it; it is
+  the platform's gesture. In the simulator the exit prints a line and ends
+  the run, so no script should hold START that long by accident.
 - **Holding B at power-on** skips the card and the panel: USB mode.
 
 The board is USB VID:PID `16C0:27DD`, and `tools/serialcap.py` /
@@ -228,8 +233,8 @@ reader, with its serial port still working beside the drive:
    exFAT. Then eject. Sending any byte to the serial port returns a status
    line (`... CARD <blocks> RW CONNECTED`).
 4. Upload the game again (on the new port). This works while the drive is
-   mounted, with no buttons. Holding B for 1 s resets the board (with the
-   menu bootloader: back to the menu).
+   mounted, with no buttons. Holding B for 1 s, or START for 3 s, resets the
+   board (with the menu bootloader: back to the menu).
 
 **From the menu:** a card built by `tools/sdcard/mkcard.py` has CHSDtoUSB as
 the **SD CARD READER** entry. Pick it, copy, eject, then hold B to go back to
@@ -253,7 +258,10 @@ tooling (`check.py`, `diffdrive.py`). Then:
 2. Update `device.py`'s debug define.
 3. Keep `src/CHGame.*`, `debug/`, `save/` and `RamFunc.h` as they are unless
    there is a reason; they are the shared core
-   ([docs/game-anatomy.md](docs/game-anatomy.md)).
+   ([docs/game-anatomy.md](docs/game-anatomy.md)). The core gives the game
+   the START-held-3-s exit to the menu.
+4. Keep that exit unless the game needs a long START hold for itself
+   (`arduboy.startExits = false` in `setup()`).
 
 ## Gotchas
 

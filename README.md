@@ -196,6 +196,7 @@ The board's permanent bootloader (12 KB at 0x0000), from CH32SerialBoot
 - the menu appears at every power-on and lists `GAMES/*.CHG` from a
   FAT16/FAT32 card;
 - the installed game is preselected, and starting it writes nothing;
+- holding START for 3 s in any game goes back to the menu;
 - another game is checked completely before anything is erased;
 - USB uploading, recovery and the memory map are unchanged.
 

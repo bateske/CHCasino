@@ -29,6 +29,13 @@ reset -> read and clear the boot request (16 B retained at 0x20000000)
 USB mode has no timeout; a fresh press of B returns to the menu.
 ```
 
+**Leaving a game.** A game returns to the menu with a plain reset, so no
+request is involved. CHCasino's games do this when START is held for 3 s
+(their shared `CHGame` core; [docs/sd-menu.md](../../docs/sd-menu.md)). The
+software-reset flag means a B still held then is not taken for the power-on
+escape. The menu ignores keys that are already down when it appears, so the
+START still held does not start anything.
+
 **The install** (`src/install.c` over `src/update.c`, the same transaction a
 USB upload uses):
 

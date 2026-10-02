@@ -89,7 +89,11 @@ them (titles in `tools/sdcard/games.json`).
 - **The SD card may have been left mid-command** by whatever ran before.
   CHSd's `sd::init()` starts from CMD0, which is enough after the bootloader.
 - **Returning to the menu.** Call `NVIC_SystemReset()`. With no request in
-  the retained block, the bootloader shows the menu.
+  the retained block, the bootloader shows the menu. The platform's gesture
+  for it is **START held for 3 s**. CHCasino's games get it from their shared
+  core: `arduboy.exitToMenu()` does the same on purpose, and
+  `arduboy.startExits = false` turns the hold off. A new game should keep the
+  gesture, so players can leave any game the same way.
 - **Uploading.** The board package's 1200-baud touch writes the USB request
   (`0x43484742` "CHGB" and its complement at 0x20000000) and resets. That is
   unchanged.

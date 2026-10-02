@@ -25,7 +25,7 @@ changed it:
 
 | | What it is | How shared |
 |---|---|---|
-| `CHGame.h/.cpp` | Arduboy-flavoured input and pacing: `pollButtons()` once a frame, then `pressed`/`justPressed`; `nextFrame()` with a microsecond accumulator (60.0 fps); auto-repeat; lockstep mode for the debug protocol. | `CHGame.h` is identical in all 20; `.cpp` differs only by a pragma |
+| `CHGame.h/.cpp` | Arduboy-flavoured input and pacing: `pollButtons()` once a frame, then `pressed`/`justPressed`; `nextFrame()` with a microsecond accumulator (60.0 fps); auto-repeat; lockstep mode for the debug protocol. START held 3 s (180 polls) calls `exitToMenu()`, a plain reset back to the SD game menu; `startExits = false` turns that off. The simulator prints the exit and ends. | `CHGame.h` is identical in all 20; `.cpp` differs only by a pragma |
 | `RamFunc.h` | `RAMFUNC(name)` puts a function in SRAM through CHGfx 1.3's `.gnu.linkonce.r.<prefix>.<name>` section trick. | Same idea, own prefix |
 | `debug/Debug.h/.cpp` | The serial debug protocol (only in `<PFX>_DEBUG` builds): `?` handshake, `S` screenshot, `K` buttons, `L1`/`L0` lockstep, `N k` frames, `P` perf + stack high-water, `T` profile, `B` bootloader. The game's own commands go through `dbg::hook`, which the scripts use to set up positions or seeds. | Same protocol everywhere, own handshake id |
 | `save/Save.h/.cpp` | Options, statistics and a game in progress, in two flash pages (0xF500/0xF600) used in turn, each with a magic, a version, a sequence number and a CRC. Writes run from SRAM after `gfx_wait()`; saving switches off if the image grows into the pages. | From CHBlackjack, **own magic per game** |
