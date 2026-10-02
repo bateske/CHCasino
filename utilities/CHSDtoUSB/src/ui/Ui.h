@@ -21,8 +21,8 @@ void button(uint32_t pin);                 // a d-pad press: pages and scrolling
 // Draws a frame if one is due (something changed, or an animation runs).
 // Returns true if it drew; the caller flushes rows [y0, y1).
 bool frame(uint32_t now, const Status &s, int &y0, int &y1);
-void goodbye();
-struct Perf { uint32_t frames, totalUs, maxUs, rows; };   // drawing time, rows flushed
-extern Perf perf;                            // "MENU", before the reset back to the SD menu
+void goodbye();                            // "MENU", before the reset back to the SD menu
+struct Perf { uint32_t frames, totalUs, maxUs, rows; };   // drawing time, rows flushed ('U')
+extern Perf perf;
 
 }  // namespace ui
