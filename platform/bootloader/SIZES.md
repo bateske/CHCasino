@@ -14,10 +14,12 @@ a boot image of at most 12,288 B with at least 256 B to spare.
 
 | Build | `.text` | `.ramfunc` | `.data` | Boot image | Free | `.bss` | RAM in use |
 |---|---|---|---|---|---|---|---|
-| **release** (menu + USB upload + self-update) | 11,276 | 596 | 76 | **11,948** | **340** | 5,668 | 8,404 |
-| locked (menu + USB upload) | 11,060 | 496 | 72 | 11,628 | 660 | 5,668 | 8,300 |
+| **release** (menu + USB upload + self-update) | 11,344 | 596 | 92 | **12,032** | **256** | 5,672 | 8,424 |
+| locked (menu + USB upload) | 11,128 | 496 | 88 | 11,712 | 576 | 5,672 | 8,320 |
 | nomenu (USB upload + self-update, for HW2a) | 5,224 | 596 | 76 | 5,896 | 6,392 | 992 | 3,728 |
-| app (the menu as a program at 0x3000, dry run) | 6,964 | 0 | 8 | 6,972 | - | 4,672 | 6,744 |
+| app (the menu as a program at 0x3000, dry run) | 7,076 | 0 | 24 | 7,100 | - | 4,676 | 6,764 |
+| release, `--theme=plain` | 11,184 | 596 | 84 | 11,864 | 424 | 5,668 | 8,412 |
+| release, `--theme=casino` | 11,176 | 596 | 84 | 11,856 | 432 | 5,668 | 8,412 |
 
 Notes:
 - `.text` includes `.init` and the vector table. `.ramfunc` and `.data`
@@ -27,8 +29,9 @@ Notes:
 - The release `.bss` is mostly the menu's game table (128 x 32 B), one
   512 B sector buffer, the protocol's 512 B frame buffer and its 256 B page
   buffer.
-- The binaries, with SHA-256 sums, are in [release/](release). Two
-  independent builds give byte-identical files (`tools/dist.sh`).
+- The binaries, with SHA-256 sums, are in [release/](release). They use the
+  default theme (rainbow). Two independent builds give byte-identical files
+  (`tools/dist.sh`).
 
 ## Milestones
 
@@ -41,19 +44,20 @@ Notes:
 | `-fno-jump-tables` | 11,908 | 380 | The protocol's command switch and the menu's tables |
 | Hardware-review fixes | 12,068 | 220 | CRC7 on every SD command and CMD59 to switch CRC checking off; the N_RC gap; SPI1 started on the USB-notice path; B debounced, and the B escape only at power-on (soft-reset flag); the panel field drawn as one counter |
 | USB strings as `const` literals | 11,948 | 340 | Manufacturer, product and interface descriptors in flash, not built at start-up (same bytes on the wire) |
+| Colour themes, rainbow by default | 12,032 | 256 | The colour wheel and its 40 ms step (+172 B over `plain`). Paid for by: list rows drawn in one pass as 6x10 text cells; the font cut to capitals (-155 B; titles are folded to upper case); the error table without its gap |
 
 ## Where the release bytes go
 
 There is no per-object split with LTO: everything is attributed to the LTO
 partitions. The split below is from `./build.sh release --nolto`, which is
-about 400 B larger and does not fit the reservation. It is linked against a
+about 450 B larger and does not fit the reservation. It is linked against a
 16 KB analysis copy of the script and must never be flashed.
 
 | Object | Bytes | |
 |---|---|---|
-| menu.c | 2,483 | the list, scan, sort, keys, messages, the INSTALLED PROGRAM entry |
+| menu.c | 2,717 | the list, scan, sort, keys, messages, the INSTALLED PROGRAM entry, the colour wheel |
 | proto.c | 1,738 | USB upload protocol, self-update commands |
-| lcd.c | 1,274 | ST7735 set-up table, fill, text; includes the 475 B font |
+| lcd.c | 1,146 | ST7735 set-up table, fill, text; includes the 320 B font (capitals) |
 | wch_usbcdc_handler.c + _cdc.c + _descr.c | 1,968 | USB CDC device |
 | fat.c | 864 | FAT16/FAT32 |
 | sd.c | 770 | SD SPI driver, CRC7 on every command |
@@ -80,6 +84,7 @@ Largest first:
   show state.
 - **`do_read`/`do_status` in the protocol, about 250 B.** These are used by
   `-verify`, the HIL tests and `chgame_upload.py status`.
+- **The plain theme, 168 B.** The same menu with a gold accent and no
+  animation (`--theme=plain`).
 - **The "n/N" counter in the menu footer.**
-- **An uppercase-only font, 155 B.**
-- **The locked build, 312 B.** It drops self-update.
+- **The locked build, 320 B.** It drops self-update.

@@ -1,7 +1,7 @@
 /*
  * font5x7.h - 5x7 glyphs for ASCII 32..126, one byte per column, bit 0 = top
- * row (475 bytes), for the menu. Copied unchanged from CHGfx 1.3.0's
- * src/CHGfx_font.h, whose notice reads:
+ * row (475 bytes), for the menu. Copied from CHGfx 1.3.0's src/CHGfx_font.h;
+ * the only change is the FONT5X7_LAST guard below. Its notice reads:
  *
  *   Glyph data is the printable-ASCII subset of the classic fixed-space
  *   GLCD font as distributed in glcdfont.c in the Adafruit GFX Library,
@@ -13,7 +13,13 @@
 #define CHBOOT_FONT5X7_H
 #include <stdint.h>
 
-static const uint8_t font5x7[95 * 5] = {
+/* The menu draws capitals only (menu.c folds titles to upper case), so the
+   glyphs after '_' (lower case and `{|}~) are left out: 155 B. */
+#ifndef FONT5X7_LAST
+#define FONT5X7_LAST '_'
+#endif
+
+static const uint8_t font5x7[(FONT5X7_LAST - 31) * 5] = {
     0x00, 0x00, 0x00, 0x00, 0x00,   /* space */
     0x00, 0x00, 0x5F, 0x00, 0x00,   /* ! */
     0x00, 0x07, 0x00, 0x07, 0x00,   /* " */
@@ -78,6 +84,7 @@ static const uint8_t font5x7[95 * 5] = {
     0x00, 0x41, 0x41, 0x41, 0x7F,   /* ] */
     0x04, 0x02, 0x01, 0x02, 0x04,   /* ^ */
     0x40, 0x40, 0x40, 0x40, 0x40,   /* _ */
+#if FONT5X7_LAST > '_'
     0x00, 0x03, 0x07, 0x08, 0x00,   /* ` */
     0x20, 0x54, 0x54, 0x78, 0x40,   /* a */
     0x7F, 0x28, 0x44, 0x44, 0x38,   /* b */
@@ -109,6 +116,7 @@ static const uint8_t font5x7[95 * 5] = {
     0x00, 0x00, 0x77, 0x00, 0x00,   /* | */
     0x00, 0x41, 0x36, 0x08, 0x00,   /* } */
     0x02, 0x01, 0x02, 0x04, 0x02,   /* ~ */
+#endif
 };
 
 #endif

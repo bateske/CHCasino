@@ -93,7 +93,7 @@ static void window(uint32_t x, uint32_t y, uint32_t w, uint32_t h)
     cmd(0x2C);                       /* RAMWR */
 }
 
-static void px(uint16_t c)
+static __attribute__((noinline)) void px(uint16_t c)
 {
     hal_spi_xfer((uint8_t)(c >> 8));
     hal_spi_xfer((uint8_t)c);
@@ -107,17 +107,24 @@ void lcd_fill(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint16_t c)
     hal_lcd_select(0);
 }
 
+static __attribute__((noinline)) const uint8_t *glyph(uint32_t ch)
+{
+    static const uint8_t mark[5] = { 0x7E, 0x7E, 0x7E, 0x00, 0x00 };    /* LCD_MARK: a 3x6 block */
+    if (ch == 0x7F) return mark;
+    return font5x7 + ((ch < 32 || ch > FONT5X7_LAST ? '?' : ch) - 32) * 5;
+}
+
 uint32_t lcd_text(uint32_t x, uint32_t y, const char *s, uint32_t n, uint16_t fg, uint16_t bg, uint32_t scale)
 {
-    uint32_t sh = scale >> 1;            /* scale 1 or 2 */
+    uint32_t sh = scale >> 1, pad = !scale;     /* scale 0: 6x10 cells, the glyph a row down */
+    uint32_t h = (8u << sh) + 2 * pad;
     hal_lcd_select(1);
     for (; n && *s; n--, s++, x += 6 << sh) {
-        uint32_t ch = (uint8_t)*s;
-        const uint8_t *g = font5x7 + ((ch < 32 || ch > 126 ? '?' : ch) - 32) * 5;
-        window(x, y, 6 << sh, 8 << sh);
-        for (uint32_t r = 0; r < 8u << sh; r++)
+        const uint8_t *g = glyph((uint8_t)*s);
+        window(x, y, 6 << sh, h);
+        for (uint32_t r = 0; r < h; r++)
             for (uint32_t c = 0; c < 6u << sh; c++) {
-                uint32_t gc = c >> sh, gr = r >> sh;
+                uint32_t gc = c >> sh, gr = (r - pad) >> sh;
                 px(gc < 5 && gr < 7 && (g[gc] >> gr & 1) ? fg : bg);
             }
     }

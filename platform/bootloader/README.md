@@ -9,6 +9,8 @@ package format and what a game needs to know are in
 
 ![The menu, the installed game and three messages, from the simulator](docs/menu_screens.png)
 
+![The default theme's colours turning](docs/menu_rainbow.gif)
+
 ## What it does
 
 ```
@@ -56,7 +58,7 @@ the measurements behind them.
 
 | Spec | Here | Why |
 |---|---|---|
-| No LCD, font or menu in the bootloader; a `MENU.CHG` launcher installed into application flash | The menu is in the bootloader | Showing a flash-installed launcher would erase the game every time; the owner's goal is no flash wear. It fits: release build 11,948 B of 12,288 B. |
+| No LCD, font or menu in the bootloader; a `MENU.CHG` launcher installed into application flash | The menu is in the bootloader | Showing a flash-installed launcher would erase the game every time; the owner's goal is no flash wear. It fits: release build 12,032 B of 12,288 B. |
 | Game first at power-on; the menu on request | The menu at every power-on, the installed game preselected | Arduboy FX behaviour, and free now: showing the menu writes nothing. |
 | Launcher copies the game to `UPDATE.CHG`, the bootloader installs that fixed name | The bootloader reads `/GAMES/*.CHG` itself; no SD writes at all | No FAT write code, no card corruption on a power cut, no 50 KB copy. |
 | Fall back to raw sectors if FAT does not fit | FAT16 + FAT32, MBR or superfloppy, any fragmentation | Fits (FAT 864 B + SD 770 B without LTO). |
@@ -105,23 +107,45 @@ the measurements behind them.
 ## Building
 
 ```
-./build.sh [release|locked|nomenu|app] [--nolto]
+./build.sh [release|locked|nomenu|app] [--theme=rainbow|plain|casino] [--nolto]
 ```
 
 The toolchain comes with the board package (`arduino-cli core install
 CHGame:ch32v@0.2.4`) and is found in the usual Arduino folders, or set
 `CHGAME_TOOLCHAIN`. On Windows, use Git Bash. Output goes to
-`build/<mode>/chgame_boot.{bin,elf,map,lst}`, and a size report is printed.
+`build/<mode>/chgame_boot.{bin,elf,map,lst}` (`build/<mode>-<theme>/` for
+another theme), and a size report is printed.
 
 | Mode | What | Size |
 |---|---|---|
-| `release` | menu + USB upload + developer self-update. **The one to install.** | 11,948 B |
-| `locked` | `release` without self-update; later bootloader updates then need the factory ISP | 11,628 B |
+| `release` | menu + USB upload + developer self-update. **The one to install.** | 12,032 B |
+| `locked` | `release` without self-update; later bootloader updates then need the factory ISP | 11,712 B |
 | `nomenu` | USB upload + self-update, the old boot decision on the new code (hardware step HW2a) | 5,896 B |
-| `app` | the menu as a program linked at 0x3000: a dry run of card, panel and keys under any bootloader, with no USB and no flash writes (HW1) | 6,972 B |
+| `app` | the menu as a program linked at 0x3000: a dry run of card, panel and keys under any bootloader, with no USB and no flash writes (HW1) | 7,100 B |
 
 `tools/dist.sh` builds all four into [release/](release) with
 `SHA256SUMS`. Two runs give identical files.
+
+### Colour themes
+
+![rainbow, plain and casino](docs/menu_themes.png)
+
+The theme is chosen when the bootloader is built: `--theme=`, or
+`MENU_THEME` at the top of `src/menu.c`.
+
+| Theme | Looks | Release size |
+|---|---|---|
+| `rainbow` (default) | black list, dark grey header and footer. The title, the bar and the footer label run through the colour wheel, about 4 s a turn | 12,032 B |
+| `plain` | the same, with a gold accent and no animation | 11,864 B |
+| `casino` | the first look: CHCasino's green felt and gold | 11,856 B |
+
+- **No flicker.** In the animation each pixel is written once per step.
+- **Boxes take the colour of the moment they appear.** This covers the
+  messages and the install bar. The USB-notice screen comes straight after a
+  reset, so it is gold.
+- **If the bootloader ever needs bytes**, `plain` gives back 168 B.
+- `python3 tools/screens.py` redraws the pictures in `docs/` after
+  `test/native/run_tests.py -k boot`.
 
 ## Testing
 
@@ -148,7 +172,7 @@ real reset; flash, the card and the panel persist in shared memory.
 | sd | the SD driver against the card model, the FAT reader against FAT16/FAT32 images (MBR, superfloppy, partition 4, fragmented files and folders, decoy labels, four kinds of broken chain, exFAT, blank), every package error |
 | boot | no card, empty card, menu, install, switch, every bad package, USB notice, B escape, a probing host, upload at the menu, the card dying mid-install, a power cut at every flash operation of an SD install |
 | boot_real | the real card from `tools/sdcard/mkcard.py`: all 21 packages installed in turn, each over the last, checked |
-| frames | 10 menu screens pinned by hash in `test/native/frames.json`; PNGs in `test/native/build/frames/` |
+| frames | 26 menu screens pinned by hash in `test/native/frames.json`: 10 in the default theme, 8 each in `plain` and `casino` (the `boot_plain`/`boot_casino` runs). PNGs are in `test/native/build/frames/` |
 
 The hardware steps are in [HARDWARE.md](HARDWARE.md).
 
@@ -169,7 +193,7 @@ The hardware steps are in [HARDWARE.md](HARDWARE.md).
 | Path | |
 |---|---|
 | `src/boot.c` | the boot decision, USB mode, `boot_reset()` |
-| `src/menu.c`, `lcd.c`, `font5x7.h` | the menu, the panel, the font |
+| `src/menu.c`, `lcd.c`, `font5x7.h` | the menu and its themes, the panel, the font (capitals only) |
 | `src/install.c`, `update.c` | the SD install and the flash transaction it shares with USB |
 | `src/sd.c`, `fat.c` | SD card and FAT: a C fork of CHSd 1.0.0 (CLAUDE.md rule 4: changes found on hardware go back into CHSd too) |
 | `src/chg.c`, `shared/chg_format.h` | the package header |
@@ -180,7 +204,7 @@ The hardware steps are in [HARDWARE.md](HARDWARE.md).
 | `host/py/` | the Python uploader (`probe`, `info`, `flash`, `selfupdate`) |
 | `test/hil/` | CH32SerialBoot's hardware tests |
 | `test/native/` | the PC suite |
-| `tools/` | `size_report.py`, `dist.sh`, `bootcheck.py` (boot region read back over USB), `chgame_map.py`, `mkimage.py` |
+| `tools/` | `size_report.py`, `dist.sh`, `screens.py` (the pictures in `docs/`), `bootcheck.py` (boot region read back over USB), `chgame_map.py`, `mkimage.py` |
 
 ## Where it came from
 

@@ -12,7 +12,7 @@
 static struct { char name[16]; int code; uint32_t len, crc; char path[512]; } pk[MAXP];
 static int npk;
 static char img_fat32[512], img_fat16[512], img_nogames[512], img_boot[512];
-static const char *frames;
+static const char *frames, *frame_prefix = "";
 static uint8_t payload[CHGAME_APP_MAX_SIZE];
 
 static int pkg(const char *name)
@@ -43,7 +43,7 @@ static int installed_is(const char *name)
 static void snap(const char *tag)
 {
     char p[1024];
-    snprintf(p, sizeof p, "%s/%s.ppm", frames, tag);
+    snprintf(p, sizeof p, "%s/%s%s.ppm", frames, frame_prefix, tag);
     lcd_model_dump_ppm(&B->lcd, p);
 }
 
@@ -145,6 +145,21 @@ static void t_installed_marked(void)
     B->limit_us = 2000000;
     CHECK(host_boot() == END_HANG, "menu");
     snap("menu_installed");
+}
+
+/* Not a test: the menu at 1.5 s and every 120 ms after, for the picture of
+   the rainbow theme in docs/ (tools/screens.py). */
+static void t_anim(void)
+{
+    for (int i = 0; i < 32; i++) {
+        char tag[16];
+        host_power_cycle();
+        card(img_fat32);
+        B->limit_us = 1500000 + 120000u * (uint32_t)i;
+        CHECK(host_boot() == END_HANG, "menu");
+        snprintf(tag, sizeof tag, "anim_%02d", i);
+        snap(tag);
+    }
 }
 
 static void t_switch_game(void)
@@ -376,6 +391,22 @@ int main(int argc, char **argv)
     fclose(f);
     if (argc > 3 && !strcmp(argv[3], "real")) {
         TEST(t_real_card);
+        return test_summary();
+    }
+    if (argc > 3 && !strcmp(argv[3], "anim")) {
+        TEST(t_anim);
+        return test_summary();
+    }
+    if (argc > 4 && !strcmp(argv[3], "themes")) {   /* the other colour themes: the screens only */
+        frame_prefix = argv[4];
+        TEST(t_no_card_no_app);
+        TEST(t_menu_waits);
+        TEST(t_installed_marked);
+        TEST(t_bad_packages);
+        TEST(t_usb_notice);
+        TEST(t_hello_at_menu);
+        TEST(t_upload_at_menu);
+        TEST(t_card_dies_mid_install);
         return test_summary();
     }
     TEST(t_no_card_runs_app);

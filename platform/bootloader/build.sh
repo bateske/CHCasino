@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build the CHGame bootloader (Linux, macOS, or Git Bash on Windows).
 #
-#   ./build.sh [MODE] [--nolto]
+#   ./build.sh [MODE] [--theme=rainbow|plain|casino] [--nolto]
 #
 # MODE
 #   release   the SD game menu bootloader, with the developer self-update
@@ -13,23 +13,30 @@
 #   app       the menu as an ordinary program at 0x3000 (dry run, no USB and no
 #             flash writes) for testing the card and the panel under ANY
 #             bootloader
+# --theme     the menu's colours (src/menu.c): rainbow (default), plain
+#             (the same, gold instead of the cycling colours) or casino
+#             (CHCasino's green felt and gold)
 # --nolto     build without LTO, for a per-object size breakdown
 #
-# Output: build/<MODE>/chgame_boot.{elf,bin,map,lst} and a size report.
+# Output: build/<MODE>[-<theme>]/chgame_boot.{elf,bin,map,lst} and a size
+# report.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MODE=release
 LTO=-flto
+THEME=rainbow
 for a in "$@"; do
   case "$a" in
     release|locked|nomenu|app) MODE="$a" ;;
     --nolto) LTO= ;;
+    --theme=rainbow|--theme=plain|--theme=casino) THEME="${a#--theme=}" ;;
     *) echo "unknown argument: $a" >&2; exit 1 ;;
   esac
 done
 OUT="$HERE/build/$MODE"
-[ -z "$LTO" ] && OUT="$HERE/build/$MODE-nolto"
+[ "$THEME" != rainbow ] && OUT="$OUT-$THEME"
+[ -z "$LTO" ] && OUT="$OUT-nolto"
 
 # The toolchain ships with the CHGame board package (arduino-cli core install
 # CHGame:ch32v); it is found in the usual Arduino data folders. Override with
@@ -63,7 +70,8 @@ esac
 ARCH="-march=rv32imacxw -mabi=ilp32"
 IMAGE_ID=1; [ "$MODE" = app ] && IMAGE_ID=2   # the fault blink tells whose handler caught it
 DEFS="-DCH32X035 -DSYSCLK_FREQ_48MHz_HSI=48000000 -DF_CPU=48000000 -DCHGAME_IMAGE_ID=$IMAGE_ID"
-DEFS="$DEFS -DCHGAME_ALLOW_SELFUPDATE=$SELFUPDATE -DCHBOOT_MENU=$MENU $APPDEF"
+THEMEDEF=-DMENU_THEME=MENU_THEME_$(echo "$THEME" | tr a-z A-Z)
+DEFS="$DEFS -DCHGAME_ALLOW_SELFUPDATE=$SELFUPDATE -DCHBOOT_MENU=$MENU $APPDEF $THEMEDEF"
 INC="-I$SHARED -I$SRC -I$USB -I$SPL -I$SPL/Core -I$SPL/Peripheral/inc"
 WARN="-Wall -Wextra -Wundef -Werror=implicit-function-declaration"
 OPT="-Os $LTO -ffunction-sections -fdata-sections -fno-common -msmall-data-limit=8 -msave-restore -fno-jump-tables ${CHBOOT_EXTRA_CFLAGS:-}"

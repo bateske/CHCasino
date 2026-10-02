@@ -16,8 +16,9 @@ The SD game menu adds code from two other parts of CHCasino, both MIT:
 - The ST7735 panel set-up values in src/lcd.c come from CHGfx 1.3.0
   (platform/libraries/CHGfx, MIT).
 
-- src/font5x7.h is CHGfx 1.3.0's src/CHGfx_font.h, unchanged. CHGfx's
-  notice for it reads:
+- src/font5x7.h is CHGfx 1.3.0's src/CHGfx_font.h. The only change is a
+  guard that leaves out the glyphs after '_' (the menu draws capitals).
+  CHGfx's notice for it reads:
 
     The printable-ASCII subset of the fixed-space GLCD font as distributed in
     glcdfont.c in the Adafruit GFX Library.

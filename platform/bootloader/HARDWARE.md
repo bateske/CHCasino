@@ -53,10 +53,15 @@ resort ([recovery.md](../board/docs/recovery.md)).
    ```
    This build has no USB, so the port disappears, which is expected.
 3. **What to check and report:**
-   - **The panel.** The menu appears: a gold "CHGAME" on dark green, 21
-     titles sorted A-Z (BACKGAMMON first), and "1/21" in the footer. If the
-     gold looks cyan or the green looks purple, red and blue are swapped:
-     report it.
+   - **The panel.** The menu appears:
+     - a black list with a dark grey header and footer;
+     - 21 titles sorted A-Z, with BACKGAMMON first;
+     - "1/21" in the footer.
+
+     The title, the selection bar and "A:PLAY" run slowly through the
+     colours, as in [docs/menu_rainbow.gif](docs/menu_rainbow.gif). Report
+     any flicker or tearing. The colour order (red and blue swapped or not)
+     is checked in HW3.
    - **Keys.** UP/DOWN move and repeat when held; LEFT/RIGHT page by 10.
    - **The card.** A on a few games shows "DRY RUN OK" and "x.x MS PER
      BLOCK" after a moment, without installing anything. Note the
@@ -113,10 +118,11 @@ expected result.
 **Menu and install**
 - [ ] Power-on with the card shows the menu, nothing preselected beyond the
       first title.
-- [ ] A on BACKGAMMON: "INSTALLING", gold bar, about 1-2 s, then the game
-      starts. Time it.
-- [ ] Switch off and on: the menu shows BACKGAMMON with a red chip, and
-      selected. A starts it at once, with no bar.
+- [ ] A on BACKGAMMON: "INSTALLING", a progress bar, about 1-2 s, then the
+      game starts. Time it.
+- [ ] Switch off and on: the menu shows BACKGAMMON selected, with a red mark
+      at its left. If the mark is blue, red and blue are swapped: report it.
+      A starts it at once, with no bar.
 - [ ] Install each of the other 19 games and the SD card reader once; each
       one starts and plays.
 - [ ] CHWords, CHWordWheel and CHCrossword find their card data
@@ -160,8 +166,8 @@ expected result.
 - [ ] It installs and runs.
 
 **Power cuts**
-- [ ] Start installing a large game (CHWords) and switch off during the gold
-      bar, at three different points.
+- [ ] Start installing a large game (CHWords) and switch off during the
+      progress bar, at three different points.
 - [ ] Each time, the next power-on shows the menu with no game marked
       installed.
 - [ ] A installs the game again, correctly.

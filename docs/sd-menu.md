@@ -22,7 +22,7 @@ highlighted. It is marked with a red chip.
 - **The game you already have.** Pressing A on the highlighted game starts it
   at once. Nothing is written to flash.
 - **Another game.** A on any other game installs it, which takes about a
-  second. The screen shows "INSTALLING" and a gold bar. The game then starts.
+  second. The screen shows "INSTALLING" and a progress bar. The game then starts.
   The new game is checked completely before anything is erased, so a damaged
   file never costs you the game you had.
 - **Back to the menu.** Switch the CHGame off and on, the same as an Arduboy

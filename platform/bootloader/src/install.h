@@ -7,7 +7,7 @@
 #define INST_E_CRC     2   /* payload damaged (CRC): nothing erased */
 #define INST_E_BOOT    3   /* a bootloader image, not a program: nothing erased */
 #define INST_E_LOST    4   /* failed after the erase began: no program is installed */
-#define INST_E_PKG     8   /* + CHG_E_* : bad header, nothing erased */
+#define INST_E_PKG     4   /* + CHG_E_* (1..): bad header, nothing erased */
 
 /* Installs the package in the file whose first cluster is clus (size bytes).
  *   pass 1: header checks, then the whole payload read and CRC-checked -

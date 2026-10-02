@@ -27,25 +27,70 @@
 #include "sys.h"
 #include "chgame_bootreq.h"
 
-#define FELT      RGB565(0, 104, 52)
-#define FELT_DK   RGB565(0, 52, 26)
-#define GOLD      RGB565(255, 200, 40)
-#define CREAM     RGB565(255, 244, 214)
-#define GREY      RGB565(120, 140, 128)
-#define CHIP      RGB565(214, 32, 32)
+/* ---- colours ------------------------------------------------------------------- */
 
-#define TITLE_COLS  19          /* x 8..121 */
+/* The theme: ./build.sh --theme=rainbow|plain|casino, or -DMENU_THEME=. The
+   default is neutral, so the menu suits any game on the card, and still shows
+   that the panel has colour. PLAIN is the same without the animation (168 B
+   less, if the bytes are ever needed); CASINO is CHCasino's felt. */
+#define MENU_THEME_RAINBOW  0       /* black and dark grey; the accent cycles through the hues */
+#define MENU_THEME_PLAIN    1       /* black and dark grey; a gold accent */
+#define MENU_THEME_CASINO   2       /* green felt and gold */
+#ifndef MENU_THEME
+#define MENU_THEME MENU_THEME_RAINBOW
+#endif
+#define RAINBOW (MENU_THEME == MENU_THEME_RAINBOW)
+
+#if MENU_THEME == MENU_THEME_CASINO
+#define BG        RGB565(0, 104, 52)        /* the list */
+#define PANEL     RGB565(0, 52, 26)         /* header, footer, the inside of boxes */
+#define GREY      RGB565(120, 140, 128)     /* a package that can't be installed */
+#define BAR_FG    PANEL                     /* the selected title */
+#else
+#define BG        RGB565(0, 0, 0)
+#define PANEL     RGB565(64, 64, 64)
+#define GREY      RGB565(128, 128, 128)
+#define BAR_FG    (RAINBOW ? BG : PANEL)    /* black reads on every hue */
+#endif
+#define CREAM     RGB565(255, 244, 214)
+#define CHIP      RGB565(214, 32, 32)       /* the installed game */
+
+#if RAINBOW
+/* The colour wheel, 192 steps: each channel ramps up, stays full, ramps down
+   and stays off, a third of a turn apart, lifted onto a floor (10 of 31) so
+   the darkest hue is still light enough for black text. Five bits per
+   channel, green's sixth bit left at 0. */
+static uint32_t hue(uint32_t p)
+{
+    uint32_t c = 0;
+    p += 64;                                /* red, then green, then blue */
+    for (uint32_t k = 0; k < 3; k++, p += 128) {
+        uint32_t q = p % 192, v = q < 32 ? q : q < 96 ? 31 : q < 128 ? 127 - q : 0;
+        c = c << 5 | (10 + ((v * 11) >> 4));
+    }
+    return (c & 0x7FE0) << 1 | (c & 0x1F);
+}
+
+#define HUE_GOLD  24                        /* (255, 214, 82) */
+static uint32_t phase = HUE_GOLD;           /* boxes drawn before the first step are gold */
+static uint32_t accent = 31u << 11 | 26u << 6 | 10u;
+#define ACCENT    accent
+#else
+#define ACCENT    RGB565(255, 200, 40)      /* gold */
+#endif
+
+#define TITLE_COLS  19          /* x 8..121, then a space to the edge */
 #define ROWS        10
 #define ROW_H       10
 #define LIST_Y      20
 
-#define G_INSTALLED 0x01
+#define G_INSTALLED 0x01        /* (draw_row indexes with it) */
 #define G_BAD       0x02        /* err holds the reason */
 
 typedef struct {
     uint32_t clus, size;
     uint8_t  flags, err;
-    char     title[TITLE_COLS + 3];     /* space-padded, NUL at TITLE_COLS */
+    char     title[TITLE_COLS + 3];     /* space-padded to TITLE_COLS + 1, then NUL */
 } __attribute__((aligned(4))) game_t;
 _Static_assert(sizeof(game_t) == 32, "keep game_t at 32 bytes");
 
@@ -78,8 +123,8 @@ static int add_game(const uint8_t *d, void *ctx)
     g->clus = fat_entry_cluster(d);
     g->size = fat_entry_size(d);
     /* the 8.3 name stands in as the title until the header is read */
-    for (uint32_t i = 0; i < TITLE_COLS; i++) g->title[i] = i < 8 ? (char)d[i] : ' ';
-    g->title[TITLE_COLS] = 0;
+    for (uint32_t i = 0; i <= TITLE_COLS; i++) g->title[i] = i < 8 ? (char)d[i] : ' ';
+    g->title[TITLE_COLS + 1] = 0;
     g->flags = 0;
     ngames++;
     return 0;
@@ -127,7 +172,8 @@ static uint32_t scan(int app)
         for (uint32_t k = 0, end = 0; k < TITLE_COLS; k++) {
             char ch = (char)buf[CHG_OFF_TITLE + k];
             if (!ch) end = 1;
-            g->title[k] = end ? ' ' : (ch < 32 || ch > 126 ? '?' : ch);
+            if (ch >= 'a' && ch <= 'z') ch -= 32;   /* the font has capitals only */
+            g->title[k] = end ? ' ' : (ch < 32 || ch > '_' ? '?' : ch);
         }
         if (app == APP_VALID && m->length == n && m->crc32 == crc) {
             g->flags = G_INSTALLED;
@@ -144,11 +190,11 @@ static uint32_t scan(int app)
     }
     if (!ngames) return 0;
     if (app == APP_VALID && !installed && ngames < MENU_MAX_GAMES) {
-        static const char t[] = "INSTALLED PROGRAM  ";
+        static const char t[] = "INSTALLED PROGRAM   ";
         for (i = ngames; i; i--) copy(&games[i], &games[i - 1]);
         games[0].clus = 0;
         games[0].flags = G_INSTALLED;
-        for (i = 0; i <= TITLE_COLS; i++) games[0].title[i] = t[i];
+        for (i = 0; i <= TITLE_COLS + 1; i++) games[0].title[i] = t[i];
         ngames++;
     }
     return ngames;
@@ -156,23 +202,41 @@ static uint32_t scan(int app)
 
 /* ---- drawing ------------------------------------------------------------------- */
 
+/* Centred; at most TITLE_COLS characters (a title's trailing space is left
+   out, so it fits a box). */
 static void text_c(uint32_t y, const char *s, uint16_t fg, uint16_t bg, uint32_t scale)
 {
     uint32_t n = 0;
-    while (s[n]) n++;
+    while (s[n] && n < TITLE_COLS) n++;
     lcd_text((LCD_W - n * 6 * scale) / 2, y, s, n, fg, bg, scale);
 }
 
 static void draw_row(uint32_t i)
 {
     uint32_t y = LIST_Y + (i - top) * ROW_H;
-    uint16_t bg = FELT, fg = CREAM;
+    uint16_t bg = BG, fg = CREAM;
     game_t *g = &games[i];
-    if (i == sel) { bg = GOLD; fg = FELT_DK; }
+    if (i == sel) { bg = ACCENT; fg = BAR_FG; }
     else if (g->flags & G_BAD) fg = GREY;
-    lcd_fill(0, y, LCD_W, ROW_H, bg);
-    if (g->flags & G_INSTALLED) lcd_fill(2, y + 2, 3, 6, CHIP);
-    lcd_text(8, y + 1, g->title, TITLE_COLS, fg, bg, 1);
+    /* Every pixel once, in three strips (edge, mark, title), so the bar can
+       change colour 25 times a second without flickering. */
+    lcd_fill(0, y, 2, ROW_H, bg);
+    lcd_text(2, y, " " LCD_MARK + (g->flags & G_INSTALLED), 1, CHIP, bg, 0);  /* (G_INSTALLED is 1) */
+    lcd_text(8, y, g->title, TITLE_COLS + 1, fg, bg, 0);
+}
+
+/* Everything in the accent colour on the list screen. */
+static void draw_accents(void)
+{
+#if RAINBOW
+    /* the title one hue per letter, so the colours run across it */
+    for (uint32_t i = 0, x = (LCD_W - 6 * 12) / 2; i < 6; i++)
+        x = lcd_text(x, 2, "CHGAME" + i, 1, hue(phase + i * 16), PANEL, 2);
+#else
+    text_c(2, "CHGAME", ACCENT, PANEL, 2);
+#endif
+    draw_row(sel);
+    lcd_text(2, 120, "A:PLAY", 6, ACCENT, PANEL, 1);
 }
 
 /* "nnn/NNN" in a fixed 7-character field, so nothing needs measuring. */
@@ -183,34 +247,34 @@ static void draw_counter(void)
     do s[--i] = (char)('0' + a % 10); while (a /= 10);
     i = b >= 100 ? 7 : b >= 10 ? 6 : 5;
     do s[--i] = (char)('0' + b % 10); while (b /= 10);
-    lcd_text(LCD_W - 2 - 7 * 6, 120, s, 7, CREAM, FELT_DK, 1);
+    lcd_text(LCD_W - 2 - 7 * 6, 120, s, 7, CREAM, PANEL, 1);
 }
 
 static void draw_list(void)
 {
     uint32_t i;
-    lcd_fill(0, 0, LCD_W, LIST_Y, FELT_DK);
-    text_c(2, "CHGAME", GOLD, FELT_DK, 2);
+    lcd_fill(0, 0, LCD_W, LIST_Y, PANEL);
     for (i = top; i < top + ROWS; i++) {
+        if (i == sel) continue;             /* (draw_accents) */
         if (i < ngames) draw_row(i);
-        else lcd_fill(0, LIST_Y + (i - top) * ROW_H, LCD_W, ROW_H, FELT);
+        else lcd_fill(0, LIST_Y + (i - top) * ROW_H, LCD_W, ROW_H, BG);
     }
-    lcd_fill(0, 120, LCD_W, 8, FELT_DK);
-    lcd_text(2, 120, "A:PLAY", 6, GOLD, FELT_DK, 1);
+    lcd_fill(0, 120, LCD_W, 8, PANEL);
+    draw_accents();
     draw_counter();
 }
 
 static void box(const char *l1, const char *l2)
 {
-    lcd_fill(6, 36, LCD_W - 12, 52, GOLD);
-    lcd_fill(8, 38, LCD_W - 16, 48, FELT_DK);
-    text_c(46, l1, GOLD, FELT_DK, 1);
-    if (l2) text_c(60, l2, CREAM, FELT_DK, 1);
+    lcd_fill(6, 36, LCD_W - 12, 52, ACCENT);
+    lcd_fill(8, 38, LCD_W - 16, 48, PANEL);
+    text_c(46, l1, ACCENT, PANEL, 1);
+    if (l2) text_c(60, l2, CREAM, PANEL, 1);
 }
 
 void menu_progress(uint32_t done, uint32_t total)
 {
-    lcd_fill(16, 72, ((LCD_W - 32) * (done + 1)) / total, 6, GOLD);
+    lcd_fill(16, 72, ((LCD_W - 32) * (done + 1)) / total, 6, ACCENT);
 }
 
 /* ---- keys ------------------------------------------------------------------------- */
@@ -251,7 +315,6 @@ static void wait_key(void)
 
 static const char *const why[] = {
     "", "CARD READ ERROR", "FILE DAMAGED", "NOT A GAME", "NO GAME INSTALLED",
-    "", "", "", "",
     "NOT A GAME FILE", "FILE DAMAGED", "NEWER FORMAT", "WRONG DEVICE", "BAD FILE SIZE",
 };
 
@@ -275,7 +338,7 @@ void menu_main(int app)
         boot_reset(CHGAME_BOOTREQ_RUN);     /* nothing on the card: run what is installed */
 #endif
     lcd_wake();
-    lcd_on(FELT);
+    lcd_on(BG);
     if (!n) {
         box("NO GAMES FOUND", "SD CARD: /GAMES");
         return;
@@ -292,6 +355,14 @@ void menu_main(int app)
 
     for (;;) {
         uint32_t old = sel, old_top = top;
+#if RAINBOW
+        static uint32_t t_hue;
+        if (sys_ticks() - t_hue >= 40u * SYS_TICKS_PER_MS) {   /* a turn of the wheel in ~3.8 s */
+            t_hue = sys_ticks();
+            accent = hue(phase += 2);      /* (hue() takes it modulo a turn) */
+            draw_accents();
+        }
+#endif
 #if !CHBOOT_APP
         proto_task();
         if (proto_claimed) {
@@ -369,6 +440,6 @@ void menu_usb_notice(void)
 #endif
     lcd_reset();
     lcd_wake();
-    lcd_on(FELT);
+    lcd_on(BG);
     box("USB UPLOAD", "B: MENU");
 }

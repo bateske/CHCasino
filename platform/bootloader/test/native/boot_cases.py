@@ -80,6 +80,10 @@ def run_all(build_dir, build, run, imgs, lay, pk, quick, pin=False):
     from run_tests import CORE, MENU   # noqa: E402
     exe = build("boot", "test_boot.c", ["-DCHBOOT_MENU=1", "-DCHGAME_ALLOW_SELFUPDATE=1"], CORE + MENU)
     ok = run("boot", exe, mpath, fdir)
+    for theme in ("plain", "casino"):           # the alternative colour themes still build and draw
+        texe = build("boot_" + theme, "test_boot.c", ["-DCHBOOT_MENU=1", "-DCHGAME_ALLOW_SELFUPDATE=1",
+                                                      "-DMENU_THEME=MENU_THEME_" + theme.upper()], CORE + MENU)
+        ok &= run("boot_" + theme, texe, mpath, fdir, "themes", theme + "_")
     real = HERE.parents[3] / "out" / "sdcard.img"
     if real.exists():
         ok &= run_real(build_dir, exe, real, fdir)
