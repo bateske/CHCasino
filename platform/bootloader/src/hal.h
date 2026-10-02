@@ -57,6 +57,7 @@ void     hal_lcd_rst(int high);
 uint32_t hal_buttons(void);
 void     hal_led(int on);
 uint32_t hal_uid(uint32_t word);
+int      hal_soft_reset(void);
 const uint8_t *hal_flash(uint32_t addr);
 void     hal_reset(void) __attribute__((noreturn));
 #define FLASH_AT(a)   hal_flash(a)
@@ -129,6 +130,16 @@ static inline uint32_t hal_buttons(void)
 static inline uint32_t hal_uid(uint32_t word)
 {
     return ((const volatile uint32_t *)CH32X035_ESIG_UNIID1)[word];
+}
+
+/* 1 if this boot follows a software reset (NVIC_SystemReset: a program going
+   back to the menu, an upload request), 0 after power-on. Clears the reset
+   flags, so the next boot sees only its own cause. */
+static inline int hal_soft_reset(void)
+{
+    uint32_t f = RCC->RSTSCKR;
+    RCC->RSTSCKR |= RCC_RMVF;
+    return (f & RCC_SFTRSTF) != 0;
 }
 
 /* A full system reset (PFIC CFGR SYSRESET); SRAM survives it. */

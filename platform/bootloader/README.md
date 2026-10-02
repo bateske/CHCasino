@@ -56,10 +56,10 @@ the measurements behind them.
 
 | Spec | Here | Why |
 |---|---|---|
-| No LCD, font or menu in the bootloader; a `MENU.CHG` launcher installed into application flash | The menu is in the bootloader | Showing a flash-installed launcher would erase the game every time; the owner's goal is no flash wear. It fits: release build 11,908 B of 12,288 B. |
+| No LCD, font or menu in the bootloader; a `MENU.CHG` launcher installed into application flash | The menu is in the bootloader | Showing a flash-installed launcher would erase the game every time; the owner's goal is no flash wear. It fits: release build 11,948 B of 12,288 B. |
 | Game first at power-on; the menu on request | The menu at every power-on, the installed game preselected | Arduboy FX behaviour, and free now: showing the menu writes nothing. |
 | Launcher copies the game to `UPDATE.CHG`, the bootloader installs that fixed name | The bootloader reads `/GAMES/*.CHG` itself; no SD writes at all | No FAT write code, no card corruption on a power cut, no 50 KB copy. |
-| Fall back to raw sectors if FAT does not fit | FAT16 + FAT32, MBR or superfloppy, any fragmentation | Fits (FAT 864 B + SD 706 B without LTO). |
+| Fall back to raw sectors if FAT does not fit | FAT16 + FAT32, MBR or superfloppy, any fragmentation | Fits (FAT 864 B + SD 770 B without LTO). |
 | Petit FatFs vs custom reader | The custom reader: a C port of CHSd's `Fat.cpp` | CHSd is already in the repository, tested against FAT16/FAT32 images and smaller than Petit FatFs in its read-only configuration. |
 | (keep USB recovery) | USB upload unchanged, plus RUN by reset, no double erase, the bootloader signature | See below. |
 
@@ -115,10 +115,10 @@ CHGame:ch32v@0.2.4`) and is found in the usual Arduino folders, or set
 
 | Mode | What | Size |
 |---|---|---|
-| `release` | menu + USB upload + developer self-update. **The one to install.** | 11,908 B |
-| `locked` | `release` without self-update; later bootloader updates then need the factory ISP | 11,596 B |
-| `nomenu` | USB upload + self-update, the old boot decision on the new code (hardware step HW2a) | 6,012 B |
-| `app` | the menu as a program linked at 0x3000: a dry run of card, panel and keys under any bootloader, with no USB and no flash writes (HW1) | 6,860 B |
+| `release` | menu + USB upload + developer self-update. **The one to install.** | 11,948 B |
+| `locked` | `release` without self-update; later bootloader updates then need the factory ISP | 11,628 B |
+| `nomenu` | USB upload + self-update, the old boot decision on the new code (hardware step HW2a) | 5,896 B |
+| `app` | the menu as a program linked at 0x3000: a dry run of card, panel and keys under any bootloader, with no USB and no flash writes (HW1) | 6,972 B |
 
 `tools/dist.sh` builds all four into [release/](release) with
 `SHA256SUMS`. Two runs give identical files.

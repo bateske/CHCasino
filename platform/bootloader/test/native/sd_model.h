@@ -38,6 +38,7 @@ typedef struct {
     uint32_t init_fast;         /* identification commands seen above 400 kHz */
     uint32_t bad_crc;           /* CMD0/CMD8 sent with a wrong CRC */
     uint32_t cmds;
+    int      crc_on;            /* CMD59 turned CRC checking on; kept across MCU resets */
 } sd_model_t;
 
 void    sd_model_insert(sd_model_t *m, int type, const char *path);

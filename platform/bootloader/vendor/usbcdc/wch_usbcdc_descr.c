@@ -105,16 +105,22 @@ const USB_STR_DESCR wch_usbcdc_LangDescr = {
 };
 
 // Dynamic string descriptors - automatically sized based on config
-WCH_USBCDC_MANUF_DESCR wch_usbcdc_ManufDescr = {
+/* CHGAME: the three fixed strings are UTF-16 literals in flash instead of RAM
+   copies filled in at start-up (same bytes on the wire; only the serial
+   number depends on the chip). */
+#define CHGAME_U16_(s) u ## s
+#define CHGAME_U16(s)  CHGAME_U16_(s)
+
+const WCH_USBCDC_MANUF_DESCR wch_usbcdc_ManufDescr = {
   .bLength = (uint8_t)(2 + 2 * WCH_USBCDC_MANUF_LEN),
   .bDescriptorType = USB_DESCR_TYP_STRING,
-  .bString = {0} // Will be filled at runtime
+  .bString = CHGAME_U16(WCH_USBCDC_MANUF_STR)
 };
 
-WCH_USBCDC_PROD_DESCR wch_usbcdc_ProdDescr = {
+const WCH_USBCDC_PROD_DESCR wch_usbcdc_ProdDescr = {
   .bLength = (uint8_t)(2 + 2 * WCH_USBCDC_PROD_LEN),
   .bDescriptorType = USB_DESCR_TYP_STRING,
-  .bString = {0} // Will be filled at runtime
+  .bString = CHGAME_U16(WCH_USBCDC_PROD_STR)
 };
 
 WCH_USBCDC_SER_DESCR wch_usbcdc_SerDescr = {
@@ -123,10 +129,10 @@ WCH_USBCDC_SER_DESCR wch_usbcdc_SerDescr = {
   .bString = {0} // Will be filled at runtime
 };
 
-WCH_USBCDC_INTERF_DESCR wch_usbcdc_InterfDescr = {
+const WCH_USBCDC_INTERF_DESCR wch_usbcdc_InterfDescr = {
   .bLength = (uint8_t)(2 + 2 * WCH_USBCDC_INTERF_LEN),
   .bDescriptorType = USB_DESCR_TYP_STRING,
-  .bString = {0} // Will be filled at runtime
+  .bString = CHGAME_U16(WCH_USBCDC_INTERF_STR)
 };
 
 // Helper functions
@@ -135,27 +141,6 @@ void uint32_to_hex_string(uint32_t value, char* output) {
     for (int i = 7; i >= 0; i--) {
         output[7-i] = hex_chars[(value >> (i * 4)) & 0xF];
     }
-}
-
-void string_to_utf16le_descriptor(const char* source, uint16_t* dest, int max_len) {
-    int i = 0;
-    while (source[i] != '\0' && i < max_len) {
-        dest[i] = (uint16_t)source[i];
-        i++;
-    }
-}
-
-// Dynamic string generation functions
-void generate_manufacturer_descriptor(void) {
-    string_to_utf16le_descriptor(WCH_USBCDC_MANUF_STR, wch_usbcdc_ManufDescr.bString, WCH_USBCDC_MANUF_LEN);
-}
-
-void generate_product_descriptor(void) {
-    string_to_utf16le_descriptor(WCH_USBCDC_PROD_STR, wch_usbcdc_ProdDescr.bString, WCH_USBCDC_PROD_LEN);
-}
-
-void generate_interface_descriptor(void) {
-    string_to_utf16le_descriptor(WCH_USBCDC_INTERF_STR, wch_usbcdc_InterfDescr.bString, WCH_USBCDC_INTERF_LEN);
 }
 
 void generate_unique_serial_descriptor(void) {
@@ -183,8 +168,5 @@ void generate_unique_serial_descriptor(void) {
 
 // Master function to generate all string descriptors
 void generate_all_string_descriptors(void) {
-    generate_manufacturer_descriptor();
-    generate_product_descriptor();
-    generate_interface_descriptor();
     generate_unique_serial_descriptor();
 }

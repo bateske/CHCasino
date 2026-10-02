@@ -61,7 +61,8 @@ case "$MODE" in
 esac
 
 ARCH="-march=rv32imacxw -mabi=ilp32"
-DEFS="-DCH32X035 -DSYSCLK_FREQ_48MHz_HSI=48000000 -DF_CPU=48000000 -DCHGAME_IMAGE_ID=1"
+IMAGE_ID=1; [ "$MODE" = app ] && IMAGE_ID=2   # the fault blink tells whose handler caught it
+DEFS="-DCH32X035 -DSYSCLK_FREQ_48MHz_HSI=48000000 -DF_CPU=48000000 -DCHGAME_IMAGE_ID=$IMAGE_ID"
 DEFS="$DEFS -DCHGAME_ALLOW_SELFUPDATE=$SELFUPDATE -DCHBOOT_MENU=$MENU $APPDEF"
 INC="-I$SHARED -I$SRC -I$USB -I$SPL -I$SPL/Core -I$SPL/Peripheral/inc"
 WARN="-Wall -Wextra -Wundef -Werror=implicit-function-declaration"

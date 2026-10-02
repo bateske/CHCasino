@@ -14,6 +14,7 @@
  *    way (that block was lost with the reset anyway); the stop-transmission
  *    token ends a write between blocks; each followed by a busy wait. It is
  *    harmless to an idle card, and an empty slot costs it about 25 ms.
+ *  - A real CRC7 on every command (see cmd()).
  *  - The timings of the driver that has run on this board (CHSDtoUSB):
  *    ACMD41 up to 2 s, a read token up to 1.5 s (a block never read since
  *    power-up can take a slow card most of a second), and CMD58's busy bit
@@ -41,16 +42,27 @@ static uint8_t wait(int tok, uint32_t ms)
     return b;
 }
 
-/* 48-bit command frame. Only CMD0 and CMD8 are checked by a card in SPI mode
-   (CRC off): their CRCs are the two constants. R1 comes within 8 bytes (one
-   more for CMD12's stuff byte); bit 7 set means nothing answered. */
+/* 48-bit command frame: 01 + index, the argument MSB first, CRC7 and the end
+   bit. The CRC is computed for every command, not just the CMD0/CMD8
+   constants: CHSDtoUSB turns the card's CRC checking on (CMD59), the card
+   stays powered across an MCU reset, and with CRC on a card refuses any
+   command with a wrong one. One 0xFF first gives the card its N_RC gap.
+   R1 comes within 8 bytes (one more for CMD12's stuff byte); bit 7 set means
+   nothing answered. */
 static uint8_t cmd(uint32_t c, uint32_t arg)
 {
-    uint8_t r;
+    uint8_t r, crc = 0;
     uint32_t k = 10;
-    x((uint8_t)(0x40 | c));
-    for (int sh = 24; sh >= 0; sh -= 8) x((uint8_t)(arg >> sh));
-    x(c == 8 ? 0x87 : 0x95);
+    x(0xFF);
+    for (int sh = 32; sh >= 0; sh -= 8) {
+        uint8_t d = sh == 32 ? (uint8_t)(0x40 | c) : (uint8_t)(arg >> sh);
+        x(d);
+        for (uint32_t b = 8; b; b--, d <<= 1) {
+            crc <<= 1;
+            if ((d ^ crc) & 0x80) crc ^= 0x09;
+        }
+    }
+    x((uint8_t)(crc << 1 | 1));
     do r = x(0xFF); while ((r & 0x80) && --k);
     return r;
 }
@@ -82,6 +94,10 @@ static int ident(void)
         if (k == 16) return -1;
         if (k == 6) recover();
     }
+    /* CRC_ON_OFF off: the card's default, which the games' own driver (CHSd,
+       fixed CRC bytes) relies on. CHSDtoUSB turns it on, and it may survive
+       CMD0. */
+    cmd(59, 0);
     r = cmd(8, 0x1AA);                          /* SEND_IF_COND 2.7-3.6 V, check pattern 0xAA */
     if (!(r & 0x04)) {                          /* not an illegal command: v2.00 or later */
         if (r != 0x01 || (rd32() & 0xFFF) != 0x1AA) return -1;

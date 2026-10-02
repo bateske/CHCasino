@@ -219,6 +219,10 @@ def sd_spec(imgs, lay, pk, quick):
     case("read_error", "sdhc", imgs["fat16"], sets=[("fail_lba", a_lba)], body=["mount 0", "filebad ALPHA.CHG"])
     case("stuck_multiread", "sdhc", imgs["fat16"], sets=[("state", "multiread")], body=["mount 0", "games " + str(len(pk))])
     case("stuck_writewait", "sdhc", imgs["fat16"], sets=[("state", "writewait")], body=["mount 0", "games " + str(len(pk))])
+    # CHSDtoUSB turns CRC checking on (CMD59) and the card keeps it across an MCU reset
+    case("crc_on", "sdhc", imgs["fat16"], sets=[("crc_on", 1)], body=full("fat16"))
+    case("crc_on_sdsc", "sdsc2", imgs["fat16"], sets=[("crc_on", 1)], body=["mount 0"])
+    case("crc_on_stuck_multiread", "sdhc", imgs["fat16"], sets=[("crc_on", 1), ("state", "multiread")], body=["mount 0", "games " + str(len(pk))])
     path = BUILD / "sd_cases.txt"
     path.write_text("\n".join(s) + "\n")
     return path

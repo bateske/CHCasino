@@ -54,7 +54,7 @@ sketchbook libraries.
 
 | | Verified | Device |
 |---|---|---|
-| Menu bootloader (release, 11,908 B) | PC suite (`test/native/run_tests.py`): flash/SD/panel models, every package error, power cuts at every flash operation of an install and of an upload, all 21 real packages installed in turn, 10 pinned menu frames | **never run**; [HARDWARE.md](../platform/bootloader/HARDWARE.md) has the steps |
+| Menu bootloader (release, 11,948 B) | PC suite (`test/native/run_tests.py`): flash/SD/panel models, every package error, power cuts at every flash operation of an install and of an upload, all 21 real packages installed in turn, 10 pinned menu frames | **never run**; [HARDWARE.md](../platform/bootloader/HARDWARE.md) has the steps |
 | Card builder (`tools/sdcard/mkcard.py`) | all 20 games and CHSDtoUSB built and packed; payloads equal the release images above | |
 
 The first device session follows HARDWARE.md:

@@ -219,6 +219,21 @@ static void t_b_held_escape(void)
     CHECK(host_boot() == END_RESET, "only a fresh press of B leaves USB mode");
 }
 
+/* CHSDtoUSB's hold-B resets with B still down: that is a software reset,
+   so it must reach the menu, not the power-on escape hatch. */
+static void t_soft_reset_with_b_held(void)
+{
+    preinstall("ALPHA.CHG");
+    card(img_fat32);
+    B->soft_reset = 1;
+    host_keys(0, BTN_B);
+    host_keys(400, 0);
+    B->limit_us = 2000000;
+    CHECK(host_boot() == END_HANG, "menu");
+    CHECK(B->sd.cmds > 0 && B->lcd.on, "B held after a software reset: the menu, not USB mode");
+    lcd_sane("soft reset with B");
+}
+
 static void t_hello_at_menu(void)
 {
     uint8_t rd[6] = { 0, 0x30, 0, 0, 32, 0 };
@@ -373,6 +388,7 @@ int main(int argc, char **argv)
     TEST(t_bad_packages);
     TEST(t_usb_notice);
     TEST(t_b_held_escape);
+    TEST(t_soft_reset_with_b_held);
     TEST(t_hello_at_menu);
     TEST(t_upload_at_menu);
     TEST(t_card_dies_mid_install);

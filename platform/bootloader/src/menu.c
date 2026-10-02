@@ -175,17 +175,15 @@ static void draw_row(uint32_t i)
     lcd_text(8, y + 1, g->title, TITLE_COLS, fg, bg, 1);
 }
 
-static void draw_footer(void)
+/* "nnn/NNN" in a fixed 7-character field, so nothing needs measuring. */
+static void draw_counter(void)
 {
-    char s[8];
-    uint32_t a = sel + 1, b = ngames, k = 8;
-    s[--k] = 0;
-    do s[--k] = (char)('0' + b % 10); while (b /= 10);
-    s[--k] = '/';
-    do s[--k] = (char)('0' + a % 10); while (a /= 10);
-    lcd_fill(0, 120, LCD_W, 8, FELT_DK);
-    lcd_text(2, 120, "A:PLAY", 6, GOLD, FELT_DK, 1);
-    lcd_text(LCD_W - 2 - (7 - k) * 6, 120, s + k, 8, CREAM, FELT_DK, 1);
+    char s[] = "   /   ";
+    uint32_t a = sel + 1, b = ngames, i = 3;
+    do s[--i] = (char)('0' + a % 10); while (a /= 10);
+    i = b >= 100 ? 7 : b >= 10 ? 6 : 5;
+    do s[--i] = (char)('0' + b % 10); while (b /= 10);
+    lcd_text(LCD_W - 2 - 7 * 6, 120, s, 7, CREAM, FELT_DK, 1);
 }
 
 static void draw_list(void)
@@ -197,7 +195,9 @@ static void draw_list(void)
         if (i < ngames) draw_row(i);
         else lcd_fill(0, LIST_Y + (i - top) * ROW_H, LCD_W, ROW_H, FELT);
     }
-    draw_footer();
+    lcd_fill(0, 120, LCD_W, 8, FELT_DK);
+    lcd_text(2, 120, "A:PLAY", 6, GOLD, FELT_DK, 1);
+    draw_counter();
 }
 
 static void box(const char *l1, const char *l2)
@@ -287,6 +287,7 @@ void menu_main(int app)
     if (sel == ngames) sel = 0;
     top = sel >= ROWS ? sel - ROWS + 1 : 0;
     k_prev = hal_buttons();
+    k_rep = sys_ticks() + 400u * SYS_TICKS_PER_MS;
     draw_list();
 
     for (;;) {
@@ -357,7 +358,7 @@ void menu_main(int app)
             continue;
         }
         if (top != old_top) draw_list();
-        else if (sel != old) { draw_row(old); draw_row(sel); draw_footer(); }
+        else if (sel != old) { draw_row(old); draw_row(sel); draw_counter(); }
     }
 }
 

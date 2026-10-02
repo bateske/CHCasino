@@ -68,10 +68,10 @@ typedef struct __attribute__((packed)) {
     uint16_t bString[WCH_USBCDC_INTERF_LEN];
 } WCH_USBCDC_INTERF_DESCR;
 
-extern WCH_USBCDC_MANUF_DESCR wch_usbcdc_ManufDescr;
-extern WCH_USBCDC_PROD_DESCR wch_usbcdc_ProdDescr;
+extern const WCH_USBCDC_MANUF_DESCR wch_usbcdc_ManufDescr;
+extern const WCH_USBCDC_PROD_DESCR wch_usbcdc_ProdDescr;
 extern WCH_USBCDC_SER_DESCR wch_usbcdc_SerDescr;
-extern WCH_USBCDC_INTERF_DESCR wch_usbcdc_InterfDescr;
+extern const WCH_USBCDC_INTERF_DESCR wch_usbcdc_InterfDescr;
 
 // USB handler state
 extern volatile uint8_t  USB_SetupReq, USB_SetupTyp, USB_Config, USB_Addr, USB_ENUM_OK;
@@ -114,14 +114,10 @@ typedef struct __attribute__((packed)) {
 
 // Functions to generate all dynamic string descriptors
 void generate_unique_serial_descriptor(void);
-void generate_manufacturer_descriptor(void);
-void generate_product_descriptor(void);
-void generate_interface_descriptor(void);
 void generate_all_string_descriptors(void);
 
 // Helper functions
 void uint32_to_hex_string(uint32_t value, char* output);
-void string_to_utf16le_descriptor(const char* source, uint16_t* dest, int max_len);
 
 #ifdef __cplusplus
 }

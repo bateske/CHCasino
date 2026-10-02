@@ -56,6 +56,19 @@ static void q32(sd_model_t *m, uint32_t v)
     q(m, (uint8_t)(v >> 24)); q(m, (uint8_t)(v >> 16)); q(m, (uint8_t)(v >> 8)); q(m, (uint8_t)v);
 }
 
+static uint8_t crc7(const uint8_t *p)
+{
+    uint8_t c = 0;
+    for (int i = 0; i < 5; i++) {
+        uint8_t d = p[i];
+        for (int b = 0; b < 8; b++, d <<= 1) {
+            c <<= 1;
+            if ((d ^ c) & 0x80) c ^= 0x09;
+        }
+    }
+    return (uint8_t)(c << 1 | 1);
+}
+
 static void command(sd_model_t *m, uint32_t spi_br)
 {
     uint8_t c = m->cmd[0] & 0x3F, crc = m->cmd[5];
@@ -70,6 +83,7 @@ static void command(sd_model_t *m, uint32_t spi_br)
 
     if (m->state == SDS_MULTIREAD) {            /* streaming: only CMD12 is heard */
         if (c != 12) return;
+        if (m->crc_on && crc != crc7(m->cmd)) { m->bad_crc++; return; }   /* refused: the stream goes on */
         q(m, 0xFF);                             /* stuff byte */
         q(m, 0x00);
         for (int i = 0; i < 4; i++) q(m, 0x00); /* busy */
@@ -80,7 +94,9 @@ static void command(sd_model_t *m, uint32_t spi_br)
     if (m->state == SDS_POWERUP) {
         if (c != 0 || m->clocks_cs_high < 74) return;   /* not yet in SPI mode: silence */
     }
-    if ((c == 0 && crc != 0x95) || (c == 8 && crc != 0x87)) { m->bad_crc++; q(m, 0xFF); q(m, idle | 0x08); return; }
+    /* CMD0 and CMD8 are always CRC-checked; everything else once CMD59 has
+       turned checking on (which CMD0 does not undo here: the worst case). */
+    if ((c == 0 || c == 8 || m->crc_on) && crc != crc7(m->cmd)) { m->bad_crc++; q(m, 0xFF); q(m, idle | 0x08); return; }
 
     q(m, 0xFF);                                 /* NCR: at least one byte */
     if (acmd && c == 41) {
@@ -107,6 +123,10 @@ static void command(sd_model_t *m, uint32_t spi_br)
         q32(m, (m->state == SDS_READY ? 0x80000000u : 0) | (m->type == SD_SDHC ? 0x40000000u : 0) | 0x00FF8000u);
         break;
     case 16:
+        q(m, idle);
+        break;
+    case 59:
+        m->crc_on = arg & 1;
         q(m, idle);
         break;
     case 12:

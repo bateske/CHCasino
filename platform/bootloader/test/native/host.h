@@ -49,6 +49,7 @@ typedef struct {
     uint32_t boot_region_writes;    /* erase/program below APP_START (must stay 0) */
     uint32_t selfupdate_calls;
     uint8_t  card_dies_on_flash;     /* the card stops answering once flash is first written */
+    uint8_t  soft_reset;             /* the coming boot follows a software reset (else power-on) */
 
     /* buttons: the mask from the last event whose time has passed */
     host_key_t keys[HOST_MAX_KEYS];

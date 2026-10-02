@@ -4,6 +4,8 @@
  *   reset -> read and clear the boot request
  *    |- RUN and the installed program is valid  -> jump to it (nothing touched yet)
  *    |- USB request, or B held at power-on      -> USB upload mode
+ *       (power-on only: a program that resets with B still down, like
+ *       CHSDtoUSB's hold-B, goes to the menu)
  *    '- otherwise                               -> the SD game menu (menu.c)
  *
  * Neither USB mode nor the menu has a timeout. The program is only ever
@@ -67,7 +69,7 @@ static int b_held(void)
 void usb_mode(void)
 {
 #if CHBOOT_MENU
-    uint32_t prev = hal_buttons(), now;
+    uint32_t prev = hal_buttons(), now, t = sys_ticks();
 #endif
 
     proto_init();
@@ -75,12 +77,17 @@ void usb_mode(void)
         proto_task();
         hal_led((sys_ticks() / (SYS_TICKS_PER_MS * 250u)) & 1u);   /* 2 Hz */
 #if CHBOOT_MENU
-        /* Only a fresh press counts: a B still held from power-on (or from
-           CHSDtoUSB's hold-B) must not bounce straight back to the menu. */
-        now = hal_buttons();
-        if (now & ~prev & BTN_B)
-            boot_reset(0);
-        prev = now;
+        /* Only a fresh press counts: a B still held from power-on must not
+           go straight back to the menu. Sampled every 20 ms, longer than
+           contact bounce, so the bounce of releasing B never reads as a
+           press. */
+        if (sys_ticks() - t >= 20u * SYS_TICKS_PER_MS) {
+            t = sys_ticks();
+            now = hal_buttons();
+            if (now & ~prev & BTN_B)
+                boot_reset(0);
+            prev = now;
+        }
 #endif
     }
 }
@@ -89,8 +96,9 @@ void boot_main(void)
 {
     uint32_t req = bootreq_take();
     int app = appmeta_check();
-
 #if CHBOOT_MENU
+    int soft;
+
     if (req == CHGAME_BOOTREQ_RUN && app == APP_VALID)
         jump_to_app();
 #else
@@ -103,9 +111,10 @@ void boot_main(void)
     hal_pins_init();
 
 #if CHBOOT_MENU
+    soft = hal_soft_reset();
     if (req == CHGAME_BOOTREQ_USB)
         menu_usb_notice();
-    else if (!b_held())
+    else if (soft || !b_held())
         menu_main(app);   /* returns only to hand over to USB mode */
 #endif
     usb_mode();

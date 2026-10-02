@@ -10,14 +10,14 @@ from `tools/size_report.py`.
 stays at 0x3000 and every game keeps its 50,944 B. The size gate (gate A) is
 a boot image of at most 12,288 B with at least 256 B to spare.
 
-## Current builds (2026-10-01)
+## Current builds (2026-10-02)
 
 | Build | `.text` | `.ramfunc` | `.data` | Boot image | Free | `.bss` | RAM in use |
 |---|---|---|---|---|---|---|---|
-| **release** (menu + USB upload + self-update) | 11,180 | 596 | 132 | **11,908** | **380** | 5,668 | 8,460 |
-| locked (menu + USB upload) | 10,964 | 496 | 136 | 11,596 | 692 | 5,668 | 8,364 |
-| nomenu (USB upload + self-update, for HW2a) | 5,284 | 596 | 132 | 6,012 | 6,276 | 992 | 3,784 |
-| app (the menu as a program at 0x3000, dry run) | 6,852 | 0 | 8 | 6,860 | - | 4,672 | 6,744 |
+| **release** (menu + USB upload + self-update) | 11,276 | 596 | 76 | **11,948** | **340** | 5,668 | 8,404 |
+| locked (menu + USB upload) | 11,060 | 496 | 72 | 11,628 | 660 | 5,668 | 8,300 |
+| nomenu (USB upload + self-update, for HW2a) | 5,224 | 596 | 76 | 5,896 | 6,392 | 992 | 3,728 |
+| app (the menu as a program at 0x3000, dry run) | 6,964 | 0 | 8 | 6,972 | - | 4,672 | 6,744 |
 
 Notes:
 - `.text` includes `.init` and the vector table. `.ramfunc` and `.data`
@@ -39,29 +39,31 @@ Notes:
 | First menu build (with self-update) | 12,104 | 184 | SD + FAT + CHG + install + LCD + font + menu |
 | Struct copies without `memcpy` | 11,944 | 344 | The game table is copied as words |
 | `-fno-jump-tables` | 11,908 | 380 | The protocol's command switch and the menu's tables |
+| Hardware-review fixes | 12,068 | 220 | CRC7 on every SD command and CMD59 to switch CRC checking off; the N_RC gap; SPI1 started on the USB-notice path; B debounced, and the B escape only at power-on (soft-reset flag); the panel field drawn as one counter |
+| USB strings as `const` literals | 11,948 | 340 | Manufacturer, product and interface descriptors in flash, not built at start-up (same bytes on the wire) |
 
 ## Where the release bytes go
 
 There is no per-object split with LTO: everything is attributed to the LTO
 partitions. The split below is from `./build.sh release --nolto`, which is
-about 700 B larger and does not fit the reservation. It is linked against a
+about 400 B larger and does not fit the reservation. It is linked against a
 16 KB analysis copy of the script and must never be flashed.
 
 | Object | Bytes | |
 |---|---|---|
-| menu.c | 2,470 | the list, scan, sort, keys, messages, the INSTALLED PROGRAM entry |
+| menu.c | 2,483 | the list, scan, sort, keys, messages, the INSTALLED PROGRAM entry |
 | proto.c | 1,738 | USB upload protocol, self-update commands |
-| lcd.c | 1,238 | ST7735 set-up table, fill, text; includes the 475 B font |
-| wch_usbcdc_handler.c + _cdc.c + _descr.c | 2,113 | USB CDC device |
+| lcd.c | 1,274 | ST7735 set-up table, fill, text; includes the 475 B font |
+| wch_usbcdc_handler.c + _cdc.c + _descr.c | 1,968 | USB CDC device |
 | fat.c | 864 | FAT16/FAT32 |
-| sd.c | 706 | SD SPI driver |
+| sd.c | 770 | SD SPI driver, CRC7 on every command |
 | flash.c | 694 | RAM-resident flash writer (the `.ramfunc` load image included) |
 | startup | 376 | WCH startup with the CHGame changes |
 | install.c | 366 | two-pass install |
-| boot.c | 314 | boot decision, USB mode, B escape |
+| boot.c | 358 | boot decision, USB mode, B escape |
 | update.c | 254 | the shared update transaction |
 | fault.c | 224 | the fault reporter (mcause/mepc on the LED) |
-| the rest | ~880 | sys, chg, crc32, crc16, usb, appmeta, bootreq, jump, `-msave-restore` helpers, SystemInit |
+| the rest | ~940 | sys, chg, crc32, crc16, usb, appmeta, bootreq, jump, `-msave-restore` helpers, SystemInit |
 
 ## The size audit
 

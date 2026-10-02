@@ -102,6 +102,7 @@ int main(int argc, char **argv)
             else if (!strcmp(b, "fail_lba")) B->sd.fail_lba = n1;
             else if (!strcmp(b, "fail_after")) B->sd.fail_after_reads = (uint32_t)n1;
             else if (!strcmp(b, "acmd41")) B->sd.acmd41_left = B->sd.acmd41_delay = (int)n1;
+            else if (!strcmp(b, "crc_on")) B->sd.crc_on = (int)n1;
             else if (!strcmp(b, "state")) {
                 /* the card as a program left it: initialised, then cut off mid-transfer */
                 B->sd.state = !strcmp(c, "multiread") ? SDS_MULTIREAD : SDS_WRITEWAIT;
@@ -111,7 +112,8 @@ int main(int argc, char **argv)
             int rc = sd_init();
             CHECK((rc == 0) == !strcmp(b, "OK"), "sd_init %d, expected %s", rc, b);
             CHECK(B->sd.init_fast == 0, "identification above 400 kHz");
-            CHECK(B->sd.bad_crc == 0, "CMD0/CMD8 CRC");
+            CHECK(B->sd.bad_crc == 0, "command CRCs");
+            CHECK(!B->sd.crc_on, "card left with CRC checking off (the games' CHSd sends fixed CRCs)");
             CHECK(B->bus_conflicts == 0, "both chip selects low");
             if (k > 2) CHECK((long)((B->now_us - t0) / 1000) <= strtol(c, NULL, 0), "init took %llu ms (limit %s)",
                              (unsigned long long)((B->now_us - t0) / 1000), c);

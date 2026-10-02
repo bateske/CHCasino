@@ -119,7 +119,7 @@ platform. Never override `compiler.cpp.extra_flags`.
 
 | | |
 |---|---|
-| Flash for the image | **50,944 B** (0x3000-0xF6FF). The bootloader takes 12 KB (the menu build uses 11,908 B of it, `platform/bootloader/SIZES.md`), and one page of metadata sits at 0xF700. |
+| Flash for the image | **50,944 B** (0x3000-0xF6FF). The bootloader takes 12 KB (the menu build uses 11,948 B of it, `platform/bootloader/SIZES.md`), and one page of metadata sits at 0xF700. |
 | Save pages | Two 256 B pages at the top of the app region. Keep the image ≤ **50,432 B** for both (A/B with CRC), ≤ 50,688 B for one. Past that, saving switches itself off. |
 | Static RAM | **18,416 B**: 20 KB less the 16 B boot block and the 2 KB stack. Under ~900 B free, Arduino warns. |
 | Stack | 2 KB (games report the high-water mark with the debug `P` command) |

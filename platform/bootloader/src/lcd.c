@@ -109,14 +109,15 @@ void lcd_fill(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint16_t c)
 
 uint32_t lcd_text(uint32_t x, uint32_t y, const char *s, uint32_t n, uint16_t fg, uint16_t bg, uint32_t scale)
 {
+    uint32_t sh = scale >> 1;            /* scale 1 or 2 */
     hal_lcd_select(1);
-    for (; n && *s; n--, s++, x += 6 * scale) {
+    for (; n && *s; n--, s++, x += 6 << sh) {
         uint32_t ch = (uint8_t)*s;
         const uint8_t *g = font5x7 + ((ch < 32 || ch > 126 ? '?' : ch) - 32) * 5;
-        window(x, y, 6 * scale, 8 * scale);
-        for (uint32_t r = 0; r < 8 * scale; r++)
-            for (uint32_t c = 0; c < 6 * scale; c++) {
-                uint32_t gc = c / scale, gr = r / scale;
+        window(x, y, 6 << sh, 8 << sh);
+        for (uint32_t r = 0; r < 8u << sh; r++)
+            for (uint32_t c = 0; c < 6u << sh; c++) {
+                uint32_t gc = c >> sh, gr = r >> sh;
                 px(gc < 5 && gr < 7 && (g[gc] >> gr & 1) ? fg : bg);
             }
     }

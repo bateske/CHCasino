@@ -90,6 +90,7 @@ void host_power_cycle(void)
     sd_model_power(&B->sd);
     lcd_model_power(&B->lcd);
     B->usb_up = 0;
+    B->soft_reset = 0;
 }
 
 void host_keys(uint64_t at_ms, uint32_t mask)
@@ -123,6 +124,9 @@ int host_boot(void)
     if (end < END_RESET || end > END_CRASH) end = END_CRASH;
     B->end = end;
     if (end == END_JUMP) B->jumps++;
+    /* What starts the next boot: a reset by the bootloader, or by the program
+       it started, is a software reset; anything else counts as power-on. */
+    B->soft_reset = end == END_RESET || end == END_JUMP;
     if (end == END_POWERCUT) host_power_cycle();
     /* After any reset the pins float: the panel's RST line drifts low
        within about a second (no pull-up on the board). */
@@ -271,6 +275,7 @@ uint32_t hal_buttons(void)
 }
 
 uint32_t hal_uid(uint32_t word) { return 0x11223344u * (word + 1); }
+int hal_soft_reset(void) { return B->soft_reset; }
 
 const uint8_t *hal_flash(uint32_t addr)
 {
