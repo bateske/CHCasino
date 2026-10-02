@@ -5,8 +5,8 @@ Agent-facing notes for continuing work here; rules, controls and build are in RE
 ## Snapshot
 
 - Imported from https://github.com/bateske/CHCrossword at commit 68c482e (2026-10-01); develop here now, not in the old repo.
-- Release build (`opt=oslto,rtlib=nano,periph=game,usb=uploadonly`, core 0.2.4, CHGfx 1.3.0): flash 50,044 of 50,944 B (900 spare), static RAM 17,540 of 18,416 B (876 spare).
-- Flash is full in practice: the image (`../../tools/check_size.py`'s `image:` line, ~50,300 B) sits only ~130 B under the 50,432 B that keeps both A/B save pages (0xF500/0xF600). Any new feature needs a cut first.
+- Release build (`opt=oslto,rtlib=nano,periph=game,usb=uploadonly`, core 0.2.4, CHGfx 1.3.0): flash 50,056 of 50,944 B (888 spare), static RAM 17,540 of 18,416 B (876 spare) (2026-10-02, with the core's hold-START exit).
+- Flash is full in practice: the image (`../../tools/check_size.py`'s `image:` line, 50,312 B) sits only 120 B under the 50,432 B that keeps both A/B save pages (0xF500/0xF600). Any new feature needs a cut first.
 - Verification: simulator only. `python tools/check.py` passes: puzzle check, host tests (decoder vs the Python reference, rules and score, saving, FAT16/FAT32 card images with a read failure at every point), every script twice with identical frames, device compile and size.
 - As of 2026-10-01 it has never run on the device, and CHSd (its SD driver) has never read a real card in any game.
 

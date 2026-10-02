@@ -1,4 +1,4 @@
-# Status of the games (as of 2026-10-01)
+# Status of the games (as of 2026-10-02)
 
 **What the columns mean:**
 - **Image:** the release build (`opt=oslto,rtlib=nano,periph=game,usb=uploadonly`,
@@ -12,26 +12,26 @@
 
 | Game | Image | Save room | RAM | Simulator | Device |
 |---|---|---|---|---|---|
-| CHBackgammon | 49,524 | 908 | 16,924 | check.py | never run |
-| CHBingo | 36,724 | 13,708 | 15,208 | tests, scripts, sim_save, diffdrive | never run |
-| CHBlackjack | 45,812 | 4,620 | 15,736 | tests, scripts | **runs; render times measured** (the last art-only commit not re-run) |
-| CHBoardwalk | 49,856 | 576 | 15,404 | tests, scripts | never run |
-| CHCheckers | 42,024 | 8,408 | 17,436 | check.py | never run |
-| CHChess | 48,884 | 1,548 | 17,872 | tests, scripts | **runs; render and think times, stack measured** |
-| CHCraps | 50,032 | 400 | 15,520 | tests, scripts, sim_save | never run |
-| CHCrossword | 50,300 | 132 | 17,540 | check.py (incl. FAT card images) | never run |
-| CHDominoes | 42,356 | 8,076 | 17,296 | check.py | never run |
-| CHFour | 36,332 | 14,100 | 16,388 | check.py | never run |
-| CHMahjong | 48,364 | 2,068 | 18,084 | tests, scripts | an early build ran well; current build not run |
-| CHPoker | 48,908 | 1,524 | 15,868 | tests, scripts | never run |
-| CHRoulette | 49,796 | 636 | 16,084 | tests, scripts, ball tests, diffdrive | never run |
-| CHSlots | 47,112 | 3,320 | 14,788 | tests, scripts, diffdrive | never run |
-| CHSnakes | 37,336 | 13,096 | 15,704 | check.py | never run |
-| CHSolitaire | 31,144 | 19,288 | 16,540 | check.py | never run |
-| CHTicTacToe | 50,308 | 124 | 15,176 | tests, scripts, diffdrive | never run |
-| CHWords | 50,396 | 36 | 15,836 | check.py (incl. the SD dictionary) | never run |
-| CHWordWheel | 50,312 | 120 | 15,244 | check.py (incl. the SD bank, diffdrive) | never run |
-| CHYacht | 43,732 | 4,700 | 14,996 | tests, scripts, sim_save | never run |
+| CHBackgammon | 49,580 | 852 | 16,924 | check.py | never run |
+| CHBingo | 36,748 | 13,684 | 15,208 | tests, scripts, sim_save, diffdrive | never run |
+| CHBlackjack | 45,872 | 4,560 | 15,736 | tests, scripts | **runs; render times measured** (the last art-only commit not re-run) |
+| CHBoardwalk | 49,884 | 548 | 15,404 | tests, scripts | never run |
+| CHCheckers | 42,048 | 8,384 | 17,444 | check.py | never run |
+| CHChess | 48,904 | 1,528 | 17,880 | tests, scripts | **runs; render and think times, stack measured** |
+| CHCraps | 50,064 | 368 | 15,520 | tests, scripts, sim_save | never run |
+| CHCrossword | 50,312 | 120 | 17,540 | check.py (incl. FAT card images) | never run |
+| CHDominoes | 42,364 | 8,068 | 17,296 | check.py | never run |
+| CHFour | 36,356 | 14,076 | 16,388 | check.py | never run |
+| CHMahjong | 48,456 | 1,976 | 18,084 | tests, scripts | an early build ran well; current build not run |
+| CHPoker | 48,940 | 1,492 | 15,868 | tests, scripts | never run |
+| CHRoulette | 49,804 | 628 | 16,084 | tests, scripts, ball tests, diffdrive | never run |
+| CHSlots | 47,092 | 3,340 | 14,788 | tests, scripts, diffdrive | never run |
+| CHSnakes | 37,348 | 13,084 | 15,704 | check.py | never run |
+| CHSolitaire | 31,184 | 19,248 | 16,540 | check.py | never run |
+| CHTicTacToe | 50,352 | 80 | 15,176 | tests, scripts, diffdrive | never run |
+| CHWords | 50,416 | 16 | 15,836 | check.py (incl. the SD dictionary) | never run |
+| CHWordWheel | 50,348 | 84 | 15,244 | check.py (incl. the SD bank, diffdrive) | never run |
+| CHYacht | 43,732 | 6,700 | 14,996 | tests, scripts, sim_save | never run |
 
 When the games moved into CHCasino, every simulator script (211), host
 test, audio preview, redraw check and release build was re-run and compared

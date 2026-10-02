@@ -20,7 +20,7 @@ bootloader was changed.
 |---|---|
 | A | rescan the card: brings the drive back after it was ejected |
 | START | toggle read-only (the PC is told the medium changed) |
-| B, held 1 s | detach and return to the SD game menu (a reset; with a bootloader older than the menu it just restarts this sketch) |
+| B held 1 s, or START held 3 s | detach and return to the SD game menu (a reset; with a bootloader older than the menu it just restarts this sketch). START held 3 s is the platform's exit gesture, the same in every game |
 | B, held while powering on | **safe mode**: never take over USB, stay a plain CHGame serial device |
 
 The screen shows the card size, what the PC is doing (WAITING FOR PC,
