@@ -132,14 +132,18 @@ static inline uint32_t hal_uid(uint32_t word)
     return ((const volatile uint32_t *)CH32X035_ESIG_UNIID1)[word];
 }
 
-/* 1 if this boot follows a software reset (NVIC_SystemReset: a program going
-   back to the menu, an upload request), 0 after power-on. Clears the reset
-   flags, so the next boot sees only its own cause. */
+/* 1 if this boot follows a reset without loss of power (NVIC_SystemReset: a
+   program going back to the menu, an upload request), 0 after power-on.
+   Clears the reset flags, so the next boot sees only its own cause. The
+   software-reset flag cannot tell the two apart: on the board it is set
+   after a power-on as well (test/hil/RESULTS-2026-10-01.md; the factory boot
+   code runs first and enters the user flash with a software reset). The
+   power-on flag can. */
 static inline int hal_soft_reset(void)
 {
     uint32_t f = RCC->RSTSCKR;
     RCC->RSTSCKR |= RCC_RMVF;
-    return (f & RCC_SFTRSTF) != 0;
+    return (f & RCC_PORRSTF) == 0;
 }
 
 /* A full system reset (PFIC CFGR SYSRESET); SRAM survives it. */

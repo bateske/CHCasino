@@ -202,8 +202,7 @@ static uint32_t scan(int app)
 
 /* ---- drawing ------------------------------------------------------------------- */
 
-/* Centred; at most TITLE_COLS characters (a title's trailing space is left
-   out, so it fits a box). */
+/* Centred; at most TITLE_COLS characters. */
 static void text_c(uint32_t y, const char *s, uint16_t fg, uint16_t bg, uint32_t scale)
 {
     uint32_t n = 0;
@@ -264,17 +263,21 @@ static void draw_list(void)
     draw_counter();
 }
 
+/* A game's title is padded to TITLE_COLS, so text_c() always draws it 114
+   pixels wide, from x 7. The box leaves 3 pixels each side of that inside
+   its 2-pixel border, and the progress bar runs under the title, edge to
+   edge. */
 static void box(const char *l1, const char *l2)
 {
-    lcd_fill(6, 36, LCD_W - 12, 52, ACCENT);
-    lcd_fill(8, 38, LCD_W - 16, 48, PANEL);
+    lcd_fill(2, 36, LCD_W - 4, 52, ACCENT);
+    lcd_fill(4, 38, LCD_W - 8, 48, PANEL);
     text_c(46, l1, ACCENT, PANEL, 1);
     if (l2) text_c(60, l2, CREAM, PANEL, 1);
 }
 
 void menu_progress(uint32_t done, uint32_t total)
 {
-    lcd_fill(16, 72, ((LCD_W - 32) * (done + 1)) / total, 6, ACCENT);
+    lcd_fill(7, 72, ((LCD_W - 14) * (done + 1)) / total, 6, ACCENT);
 }
 
 /* ---- keys ------------------------------------------------------------------------- */
