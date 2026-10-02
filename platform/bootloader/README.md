@@ -189,8 +189,9 @@ The hardware steps are in [HARDWARE.md](HARDWARE.md).
   `python host/py/chgame_upload.py selfupdate release/chgame_sdboot.bin --yes`.
 - **Factory ISP:** hold BOOT across power-on, then `wchisp flash
   release/chgame_sdboot.bin`.
-- **The order to use the first time:** HW1, HW2a, HW2b; see
-  [HARDWARE.md](HARDWARE.md).
+- **The first time:** [HARDWARE.md](HARDWARE.md) has two routes. The direct
+  route goes straight to `chgame_sdboot.bin`, with fallbacks. The staged
+  route is HW1, HW2a, HW2b.
 - **The Arduino IDE caveat.** *Burn Bootloader* and *Upload Using
   Programmer* still write the board package's own 0.2.4 bootloader until a
   board package release carries this one.

@@ -6,11 +6,15 @@ on a real CHGame. They need a person to press buttons and switch the power,
 and a computer with the board on USB: a local Claude Code session (Claude
 Desktop, or `claude remote-control` in this repository) can run the commands.
 
-The steps are ordered so each change meets the hardware alone:
-- **HW1** tries the card, panel and menu code as an ordinary program, under
-  the bootloader already on the board.
-- **HW2a** changes the bootloader without the menu.
-- **HW2b** adds the menu.
+There are two routes:
+- **The direct route** goes straight to the menu bootloader, then runs the
+  HW3 checklist. It is quicker, but a failure at first boot could come from
+  the card driver, the panel code or the new upload path.
+- **The staged route** gives each change its own step:
+  - **HW1** tries the card, panel and menu code as an ordinary program, under
+    the bootloader already on the board.
+  - **HW2a** changes the bootloader without the menu.
+  - **HW2b** adds the menu.
 
 Every step can be rolled back over USB, and the factory ISP is the last
 resort ([recovery.md](../board/docs/recovery.md)).
@@ -33,6 +37,90 @@ resort ([recovery.md](../board/docs/recovery.md)).
   SHA-256 sums. `tools/dist.sh` rebuilds them byte-identical.
 - **Card contents.** `python tools/sdcard/mkcard.py` builds and packs all 20
   games plus the SD card reader into `out/sdcard/`.
+
+## The direct route
+
+About an hour and a half, including the card build. Do "Before starting"
+above first, and these as well:
+- **The factory ISP is the safety net**, because this route skips the dry
+  run.
+  - Check that the BOOT button can be reached.
+  - Check that `wchisp probe` sees the chip in ISP mode. On Windows it needs
+    the WinUSB driver; see [recovery.md](../board/docs/recovery.md).
+  - Switch off and on without BOOT to leave ISP mode.
+- **Check the image** against [release/SHA256SUMS](release/SHA256SUMS). In
+  Git Bash: `cd platform/bootloader/release && sha256sum -c SHA256SUMS`.
+
+**D1. Build and load the card**, while the board still has its old
+bootloader.
+1. Run `python tools/sdcard/mkcard.py`. It builds all 21 sketches into
+   `out/sdcard/`, which takes 20-30 minutes.
+2. Copy everything in `out/sdcard/` to the root of a FAT32 microSD card (32 GB
+   or less). Use either:
+   - a PC card reader;
+   - the board itself as a card reader: HW1 step 1 (CHSDtoUSB).
+3. `python tools/chgpack.py info <drive>` must list 21 packages, all "ok".
+4. Eject the card, and put it in the CHGame if it is not there already.
+
+**D2. Install the menu bootloader.** The uploader touches the port itself,
+from whatever is running.
+```
+UP selfupdate platform/bootloader/release/chgame_sdboot.bin --yes
+UP info                                  # BOOT_VERSION 2
+```
+
+**D3. The first boot.**
+- The board resets into the new bootloader. Switch off and on once as well.
+- The rainbow menu should appear in under half a second:
+  - a black list with a dark grey header and footer;
+  - 21 titles A-Z, BACKGAMMON first;
+  - "1/21" in the footer.
+- No game is installed yet, because the staging erased the sketch.
+- A on BACKGAMMON: "INSTALLING", a progress bar, then the game starts.
+
+**If D3 goes wrong**, try these in order:
+1. **No picture, or a garbled one.**
+   - Hold B while switching on. The bootloader skips the card and the panel
+     and waits in USB mode (the LED blinks at 2 Hz).
+   - Check that `UP probe` answers.
+   - Note exactly what the screen did.
+   - To go back: `UP selfupdate platform/board/arduino/CHGame/bootloaders/CHGame/chgame_bootloader.bin --yes`.
+2. **"NO GAMES FOUND" or "CAN'T INSTALL / CARD READ ERROR"** with a card
+   that reads fine on the PC: this is the SD clock or the card driver.
+   - Run the dry run, which works under any bootloader:
+     `UP flash platform/bootloader/release/chgame_menu_dryrun.bin --run`.
+   - Then follow HW1 step 3 and note which SD speeds work.
+   - SELECT leaves it, to the "USB UPLOAD" screen.
+3. **No USB at all, even with B held.**
+   - Hold BOOT across power-on.
+   - Run `UP provision --bootloader platform/board/arduino/CHGame/bootloaders/CHGame/chgame_bootloader.bin`,
+     or `wchisp flash` the same image.
+
+**D4. The HW3 checklist**, in this order (fewest power cycles):
+1. Menu and install.
+2. Leaving a game.
+3. USB and uploads.
+4. Cards.
+5. Damaged packages.
+6. Fragmentation.
+7. Power cuts.
+8. The boot region and the HIL tests: `tools/bootcheck.py`,
+   `test/hil/test_protocol.py` and `test_powercut.py`. These stand in for
+   the HW2a checks this route skips. `test_protocol.py` erases the installed
+   game; reinstall one from the menu afterwards.
+
+**D5. HW4**, the final state.
+
+**The results.**
+- Write `platform/bootloader/test/hil/RESULTS-<date>.md`:
+  - every HW3 line as pass, fail or a note;
+  - the install time of a few games;
+  - the SD speeds tried and which worked;
+  - the `wchisp info` chip marking, if it was read;
+  - anything odd, with what the screen showed.
+- Commit it and push it to the branch.
+- Change no code during the run. Fixes are made against the PC models in
+  `test/native` first, then tried on the board again.
 
 ## HW1: the menu as a program (the bootloader is not touched)
 
