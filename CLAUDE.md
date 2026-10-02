@@ -240,6 +240,11 @@ reader, with its serial port still working beside the drive:
 the **SD CARD READER** entry. Pick it, copy, eject, then hold B to go back to
 the menu (B now resets instead of entering the bootloader).
 
+**Its screen** graphs every command and names the files the PC creates,
+deletes, renames and moves. It runs in its own simulator against a pretend
+PC: `python utilities/CHSDtoUSB/tools/sim/sim.py run out/sd` (its README,
+"The screen in the simulator").
+
 **What each game reads from the card:**
 - CHWords: `WORDS.DIC` in the root.
 - CHWordWheel: `PHRASES.BNK` in the root.

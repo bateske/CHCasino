@@ -11,7 +11,13 @@
 //   A (tap)        rescan the card (brings the drive back after an eject)
 //   START          toggle read-only (the host is told the medium changed)
 //   B (hold 1 s)   eject and reboot into the bootloader
+//   LEFT / RIGHT   the screen's panel: events, stats, the card
+//   UP / DOWN      scroll the event log
 //   B held at power-up: safe mode - stay a plain USB serial device
+//
+// The screen (src/ui) graphs every command the PC sends and names the
+// files it creates, deletes, renames and moves: src/mon works that out from
+// the card's layout and the directory blocks going past.
 //
 // Cards can be swapped while it runs. The board has no card-detect switch,
 // so once a second the card is asked whether it is still there (or, with
@@ -20,13 +26,16 @@
 // Every block read from the card is CRC-checked, and the card is told to
 // check the CRC of every command and every block written to it, so a bit
 // flipped on the wire is retried - never stored, never handed to the PC.
-// Any byte sent to the serial port returns a status line.
+// Any byte sent to the serial port returns a status line ('U': the
+// screen's drawing times instead).
 //
 // The SD block driver (src/sd) is the fast DMA Sd2Card from CHStlView,
 // derived from William Greiman's sdfatlib: GPL-3.0, so this sketch is too.
 #include <CHGfx.h>
 #include "src/sd/Sd2Card.h"
 #include "src/usb/UsbMsc.h"
+#include "src/mon/Monitor.h"
+#include "src/ui/Ui.h"
 
 extern "C" void chgame_enter_bootloader(void);
 
@@ -58,7 +67,7 @@ static bool writeFault(uint8_t tries) { return fault(tries, tWriteSoft, tWrites,
 
 // ---- The card as the USB side sees it ------------------------------------
 static uint32_t devBlocks() { return cardOk ? cardBlocks : 0; }
-static bool devReadStart(uint32_t lba) { rdLba = lba; return card.readStart(lba); }
+static bool devReadStart(uint32_t lba) { rdLba = lba; mon::cmdStart(false, lba); return card.readStart(lba); }
 
 // A block that does not arrive, or does not match the CRC16 the card sent
 // with it, is read again (the stream restarts at it), up to 4 tries, before
@@ -67,6 +76,7 @@ static bool devReadBlock(uint8_t *d) {
     for (uint8_t tries = 0; tries < 4; tries++) {
         if (tries) {
             rdRetries++;
+            mon::cmdRetry();
             card.readStop();
             if (!card.readStart(rdLba)) continue;
         }
@@ -74,18 +84,20 @@ static bool devReadBlock(uint8_t *d) {
 #ifdef CHSD_TEST
         if (ok && readFault(tries)) ok = false;           // as if the CRC had not matched
 #endif
-        if (ok) { rdLba++; return true; }
+        if (ok) { mon::cmdBlock(rdLba++, d); return true; }
     }
     rdFails++;
+    mon::cmdFail();
     return false;
 }
-static bool devReadStop() { return card.readStop(); }
+static bool devReadStop() { bool ok = card.readStop(); mon::cmdEnd(); return ok; }
 
 // A block the card rejects (bad CRC, or no clean data response) ends the
 // run; a new one starts at that block and it is sent again, up to 4 tries.
 static bool devWriteStart(uint32_t lba, uint32_t n) {
     wrLba = lba;
     wrLeft = n;
+    mon::cmdStart(true, lba);
     wrOpen = card.writeStart(lba, n);
     return wrOpen;
 }
@@ -95,6 +107,7 @@ static bool devWriteBlock(const uint8_t *s) {
     for (uint8_t tries = 0; tries < 4; tries++) {
         if (tries) {
             wrRetries++;
+            mon::cmdRetry();
             if (wrOpen) card.writeStop();
             wrOpen = card.writeStart(wrLba, wrLeft);
             if (!wrOpen) continue;
@@ -105,20 +118,33 @@ static bool devWriteBlock(const uint8_t *s) {
 #ifdef CHSD_TEST
         if (writeFault(tries)) sent ^= 0x0101;
 #endif
-        if (card.writeDataEnd(sent)) { wrLba++; wrLeft--; return true; }
+        if (card.writeDataEnd(sent)) { mon::cmdBlock(wrLba++, s); wrLeft--; return true; }
     }
     wrFails++;
+    mon::cmdFail();
     return false;
 }
 static bool devWriteStop() {
-    if (!wrOpen) return false;
+    bool ok = wrOpen && card.writeStop();
     wrOpen = false;
-    return card.writeStop();
+    mon::cmdEnd();
+    return ok;
 }
 
 static const usbmsc::BlockDevice DEV = {
     devBlocks, devReadStart, devReadBlock, devReadStop, devWriteStart, devWriteBlock, devWriteStop,
 };
+
+static bool monRead(uint32_t lba, uint8_t *dst) { return card.readBlock(lba, dst); }
+
+// The monitor reads the new card's layout from its first blocks, the screen
+// gets its identity (CID).
+static void cardChanged() {
+    mon::mount(cardBlocks, monRead, usbmsc::buffer());
+    uint8_t cid[16];
+    ui::setCard(cardOk && card.readCID((cid_t *)cid) ? cid : nullptr, cardOk ? card.type() : 0);
+    if (cardOk) mon::event(mon::EV_CARDIN, mon::vol.label, cardBlocks);
+}
 
 // cmd0Timeout: how long an empty slot is given to answer (see Sd2Card::init).
 static bool initCard(unsigned int cmd0Timeout = SD_INIT_TIMEOUT) {
@@ -127,6 +153,7 @@ static bool initCard(unsigned int cmd0Timeout = SD_INIT_TIMEOUT) {
     if (cardOk) card.crcOn();              // mandatory in SPI mode; reads are checked here either way
     cardBlocks = cardOk ? card.cardSize() : 0;
     if (!cardBlocks) cardOk = false;
+    if (cardOk) cardChanged();
     return cardOk;
 }
 
@@ -139,37 +166,21 @@ static bool cardPresent(uint32_t now) {
     return card.present();
 }
 
-enum : uint8_t { BG, WHITE, SILVER, DIM, GOLD, GREEN, CYAN, RED, NAVY, INK, BLUE, ORANGE };
-static const uint16_t PALETTE[16] = {
-    0x10A6, 0xFFFF, 0xBDF7, 0x52AA, 0xFE60, 0x4F4A, 0x6F7F, 0xE8A4,
-    0x18CC, 0x0000, 0x3B7F, 0xFB40, 0, 0, 0, 0,
-};
-
 static bool safeMode = false;
-static uint32_t lastUi = 0, lastRate = 0, lastBlocks = 0, rateKBs = 0, nextProbe = 0, lastButtons = 0;
+static uint32_t nextProbe = 0, lastButtons = 0;
 static uint32_t bHeld = 0;                                 // when B went down
 static uint32_t sHeld = 0;                                 // when START went down
 static bool prevA = false, prevStart = false, bDown = false;
+static uint8_t prevPad = 0;                                // d-pad, one bit a button
+static usbmsc::State prevUsb = usbmsc::OFF;
 
 static bool pressed(uint8_t pin) { return digitalRead(pin) == LOW; }
 
 // A present card answers CMD0 at once, so an empty slot needn't cost 2 s.
 static void pressA() { initCard(250); usbmsc::mediaChanged(); }
-static void pressStart() { usbmsc::setReadOnly(!usbmsc::readOnly()); }
-
-// ---- Screen ---------------------------------------------------------------
-static void centred(int y, const char *s, uint8_t c, uint8_t scale = 1) {
-    gfx_textScaled(64 - gfx_textWidthScaled(s, scale) / 2, y, s, c, scale);
-}
-
-static void sdIcon(int x, int y, uint8_t body, uint8_t label) {
-    // A microSD silhouette: notched corner, contacts, a label.
-    gfx_fillRect(x + 6, y, 30, 44, body);
-    gfx_fillRect(x, y + 10, 36, 34, body);
-    for (int i = 0; i < 6; i++) gfx_hline(x + 6 - i, y + 4 + i, i, body);
-    for (int i = 0; i < 6; i++) gfx_fillRect(x + 9 + i * 4, y + 2, 2, 6, GOLD);
-    gfx_fillRect(x + 4, y + 18, 28, 20, label);
-    gfx_rect(x + 4, y + 18, 28, 20, INK);
+static void pressStart() {
+    usbmsc::setReadOnly(!usbmsc::readOnly());
+    mon::event(usbmsc::readOnly() ? mon::EV_RO : mon::EV_RW, "", 0);
 }
 
 static char *fmtU(char *p, uint32_t v) {
@@ -185,82 +196,6 @@ static char *put(char *p, const char *s) {
     while (*s) *p++ = *s++;
     *p = 0;
     return p;
-}
-
-// "123.4 MB" style, from 512-byte blocks.
-static void fmtSize(char *p, uint32_t blocks) {
-    uint32_t mb10 = (uint32_t)(((uint64_t)blocks * 512 * 10) >> 20);
-    if (mb10 >= 10240) {                                   // >= 1 GB: show GB
-        uint32_t gb10 = mb10 / 1024;
-        p = fmtU(p, gb10 / 10); *p++ = '.'; p = fmtU(p, gb10 % 10);
-        put(p, " GB");
-        return;
-    }
-    p = fmtU(p, mb10 / 10); *p++ = '.'; p = fmtU(p, mb10 % 10);
-    put(p, " MB");
-}
-
-static void drawUi(uint32_t now) {
-    using namespace usbmsc;
-    gfx_clear(BG);
-    gfx_fillRect(0, 0, 128, 14, NAVY);
-#ifdef CHSD_TEST
-    centred(3, "SD READER - TEST", GOLD);
-#else
-    centred(3, "SD CARD READER", GOLD);
-#endif
-
-    State s = state();
-    const char *msg;
-    uint8_t body = DIM, label = SILVER;
-    bool blink = (now / 150) & 1;
-    if (safeMode)                  { msg = "SAFE MODE";        body = DIM; }
-    else if (!cardOk)              { msg = "NO CARD";          body = DIM; label = DIM; }
-    else if (s == READING)         { msg = "READING";          body = CYAN; label = blink ? WHITE : CYAN; }
-    else if (s == WRITING)         { msg = "WRITING";          body = RED; label = blink ? WHITE : RED; }
-    else if (s == CONFIGURED)      { msg = "CONNECTED";        body = GREEN; }
-    else if (s == EJECTED)         { msg = "EJECTED";          body = GOLD; }
-    else                           { msg = "WAITING FOR PC";   body = BLUE; }
-    sdIcon(46, 20, body, label);
-    char num[12];
-    if (rdRetries + wrRetries) {                           // blocks sent or read again
-        gfx_text(4, 24, "RETRY", SILVER);
-        fmtU(num, rdRetries + wrRetries);
-        gfx_text(4, 33, num, ORANGE);
-    }
-    if (rdFails + wrFails) {                               // ... and given up on
-        gfx_text(4, 46, "FAIL", SILVER);
-        fmtU(num, rdFails + wrFails);
-        gfx_text(4, 55, num, RED);
-    }
-    centred(70, msg, s == WRITING && !safeMode && cardOk ? RED : WHITE, gfx_textWidthScaled(msg, 2) <= 124 ? 2 : 1);
-
-    char buf[24];
-    if (safeMode) {
-        centred(90, "USB serial only.", SILVER);
-        centred(100, "Reset without B", SILVER);
-        centred(110, "to be a drive.", SILVER);
-        return;
-    }
-    if (!cardOk) {
-        centred(88, "Insert a card", SILVER);
-    } else if (s == EJECTED) {
-        centred(88, "Press A to reconnect", SILVER);
-    } else {
-        fmtSize(buf, cardBlocks);
-        gfx_text(4, 88, "CARD", SILVER);
-        gfx_text(124 - gfx_textWidth(buf), 88, buf, WHITE);
-    }
-    fmtSize(buf, blocksRead);
-    gfx_text(4, 97, "READ", SILVER);
-    gfx_text(124 - gfx_textWidth(buf), 97, buf, CYAN);
-    fmtSize(buf, blocksWritten);
-    gfx_text(4, 106, "WRITTEN", SILVER);
-    gfx_text(124 - gfx_textWidth(buf), 106, buf, ORANGE);
-    char *p = fmtU(buf, rateKBs);
-    put(p, " KB/s");
-    gfx_text(4, 115, readOnly() ? "READ-ONLY" : "SPEED", readOnly() ? GOLD : SILVER);
-    gfx_text(124 - gfx_textWidth(buf), 115, buf, WHITE);
 }
 
 // ---- Serial status ----------------------------------------------------------
@@ -283,7 +218,21 @@ static void sendStatus() {
     usbmsc::cdcWrite(line, (uint8_t)(p - line));
 }
 
+// 'U': how long the screen takes. Frames drawn, average and longest drawing
+// time in microseconds, average rows flushed a frame.
+static void sendPerf() {
+    char line[80], *p = put(line, "UI FRAMES ");
+    uint32_t f = ui::perf.frames ? ui::perf.frames : 1;
+    p = fmtU(p, ui::perf.frames);
+    p = fmtU(put(p, " AVG "), ui::perf.totalUs / f);
+    p = fmtU(put(p, " MAX "), ui::perf.maxUs);
+    p = fmtU(put(p, " ROWS "), ui::perf.rows / f);
+    p = put(p, "\r\n");
+    usbmsc::cdcWrite(line, (uint8_t)(p - line));
+}
+
 static void command(int c, uint32_t now) {
+    if (c == 'U') { sendPerf(); return; }
 #ifdef CHSD_TEST
     switch (c) {
         case 'a': pressA(); break;
@@ -304,18 +253,33 @@ static void command(int c, uint32_t now) {
     sendStatus();
 }
 
+static ui::Status status() {
+    using namespace usbmsc;
+    State u = state();
+    ui::Status s;
+    s.mode = safeMode ? ui::M_SAFE : !cardOk ? ui::M_NOCARD : u == EJECTED ? ui::M_EJECTED
+           : u < CONFIGURED ? ui::M_WAITING : ui::M_READY;
+    s.ro = readOnly();
+    return s;
+}
+
 // ---- Arduino ----------------------------------------------------------------
 void setup() {
     pinMode(PIN_BTN_A, INPUT_PULLUP);
     pinMode(PIN_BTN_B, INPUT_PULLUP);
     pinMode(PIN_BTN_START, INPUT_PULLUP);
     pinMode(LED_BUILTIN, OUTPUT);
+    pinMode(PIN_BTN_UP, INPUT_PULLUP);
+    pinMode(PIN_BTN_DOWN, INPUT_PULLUP);
+    pinMode(PIN_BTN_LEFT, INPUT_PULLUP);
+    pinMode(PIN_BTN_RIGHT, INPUT_PULLUP);
     gfx_begin(GFX_DIV2, GFX_12BPP);
-    gfx_setPalette(PALETTE, 16);
+    ui::begin();
     safeMode = pressed(PIN_BTN_B);
     initCard();
     if (!safeMode) usbmsc::begin(DEV);
-    drawUi(millis());
+    int y0, y1;
+    ui::frame(millis(), status(), y0, y1);
     gfx_flush();
 }
 
@@ -336,15 +300,17 @@ void loop() {
     // Activity LED.
     digitalWrite(LED_BUILTIN, usbmsc::busy() ? HIGH : LOW);
 
-    // Throughput over the last second.
-    if (now - lastRate >= 1000) {
-        uint32_t b = usbmsc::blocksRead + usbmsc::blocksWritten;
-        rateKBs = (b - lastBlocks) / 2;
-        lastBlocks = b;
-        lastRate = now;
-    }
-
     if (usbmsc::busy()) return;                  // the card holds SPI mid-command
+
+    // What the PC did to the medium.
+    usbmsc::State u = usbmsc::state();
+    if (u != prevUsb) {
+        if (u == usbmsc::EJECTED) mon::event(mon::EV_EJECT, "", 0);
+        else if (u == usbmsc::CONFIGURED && prevUsb < usbmsc::CONFIGURED) mon::event(mon::EV_PC, "", 0);
+        prevUsb = u;
+    }
+    mon::tick();
+    if (mon::remountWanted && cardOk) mon::mount(cardBlocks, monRead, usbmsc::buffer());   // repartitioned / formatted
 
     // Any byte on the serial port asks for a status line.
     int c = usbmsc::cdcRead();
@@ -357,7 +323,13 @@ void loop() {
     if (!safeMode && (int32_t)(now - nextProbe) >= 0) {
         nextProbe = now + 1000;
         if (cardOk) {
-            if (!cardPresent(now)) { cardOk = false; cardBlocks = 0; usbmsc::mediaChanged(); }
+            if (!cardPresent(now)) {
+                cardOk = false;
+                cardBlocks = 0;
+                usbmsc::mediaChanged();
+                cardChanged();
+                mon::event(mon::EV_CARDOUT, "", 0);
+            }
         }
 #ifdef CHSD_TEST
         else if ((int32_t)(tNoCardUntil - now) > 0) { }
@@ -377,6 +349,12 @@ void loop() {
             if (!safeMode) pressStart();
         }
         prevA = a; prevStart = start;
+        static const uint8_t PAD[4] = {PIN_BTN_LEFT, PIN_BTN_RIGHT, PIN_BTN_UP, PIN_BTN_DOWN};
+        for (int i = 0; i < 4; i++) {
+            bool p = pressed(PAD[i]);
+            if (p && !(prevPad & (1 << i))) ui::button(PAD[i]);
+            prevPad = (uint8_t)(p ? prevPad | (1 << i) : prevPad & ~(1 << i));
+        }
         if (pressed(PIN_BTN_B)) {
             if (!bDown) { bDown = true; bHeld = now; }
         } else bDown = false;
@@ -385,8 +363,7 @@ void loop() {
         // shows the menu. (Uploads still reach the bootloader through the
         // 1200-baud touch.)
         if (!safeMode && ((bDown && now - bHeld > 1000) || (start && now - sHeld >= 3000))) {
-            gfx_clear(BG);
-            centred(56, "MENU", GOLD, 2);
+            ui::goodbye();
             gfx_flush();
             usbmsc::detach();
             delay(300);
@@ -394,10 +371,11 @@ void loop() {
         }
     }
 
-    // Screen at ~8 Hz, only between SCSI commands (the LCD shares SPI1).
-    if (now - lastUi >= 120) {
-        lastUi = now;
-        drawUi(now);
-        gfx_flush();
-    }
+    // The screen, only between SCSI commands (the LCD shares SPI1): up to
+    // 5 frames a second while commands come, 25 while something animates,
+    // none while nothing changes, and only the rows that changed are sent.
+    // The flush runs on by DMA; a command that arrives meanwhile waits for
+    // it in the card driver.
+    int y0, y1;
+    if (ui::frame(now, status(), y0, y1)) gfx_flushRectAsync(0, y0, GFX_W, y1 - y0);
 }

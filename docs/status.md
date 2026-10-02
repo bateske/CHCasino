@@ -57,6 +57,20 @@ sketchbook libraries.
 | Menu bootloader (release, 12,032 B) | PC suite (`test/native/run_tests.py`): flash/SD/panel models, every package error, power cuts at every flash operation of an install and of an upload, all 21 real packages installed in turn, 26 pinned menu frames (three colour themes) | **never run**; [HARDWARE.md](../platform/bootloader/HARDWARE.md) has the steps |
 | Card builder (`tools/sdcard/mkcard.py`) | all 20 games and CHSDtoUSB built and packed; payloads equal the release images above | |
 
+## CHSDtoUSB
+
+[utilities/CHSDtoUSB](../utilities/CHSDtoUSB), the SD card reader:
+
+| | Verified | Device |
+|---|---|---|
+| USB mass storage, SD driver, retries | | **runs**; 78 checks of `tools/chsd_test.py`, speeds measured (its README) |
+| Instrument-panel screen and file events (2026-10-02) | simulator (`tools/sim/sim.py`: the demo and edge sessions, every event checked against what the pretend PC did); drawing and per-block costs counted on an emulated RV32 core; sources type-checked against the core's headers | **never run**; flash and RAM not measured (estimated ~41 KB, +2.3 KB RAM) |
+
+The first device session for the new screen: build and note the size, run
+`tools/chsd_test.py` (nothing in the USB or SD paths changed, but the
+timing did), copy files and watch the events, and read `U` on the serial
+port for the drawing times.
+
 The first device session follows HARDWARE.md:
 - **HW1:** the menu as a program, under the current bootloader.
 - **HW2a:** the new code without the menu.
