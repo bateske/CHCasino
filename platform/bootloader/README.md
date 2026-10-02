@@ -32,8 +32,8 @@ USB mode has no timeout; a fresh press of B returns to the menu.
 **Leaving a game.** A game returns to the menu with a plain reset, so no
 request is involved. CHCasino's games do this when START is held for 3 s
 (their shared `CHGame` core; [docs/sd-menu.md](../../docs/sd-menu.md)). The
-software-reset flag means a B still held then is not taken for the power-on
-escape. The menu ignores keys that are already down when it appears, so the
+reset flags show that the power did not go off, so a B still held then is
+not taken for the power-on escape. The menu ignores keys that are already down when it appears, so the
 START still held does not start anything.
 
 **The install** (`src/install.c` over `src/update.c`, the same transaction a
@@ -153,6 +153,22 @@ The theme is chosen when the bootloader is built: `--theme=`, or
 - **If the bootloader ever needs bytes**, `plain` gives back 168 B.
 - `python3 tools/screens.py` redraws the pictures in `docs/` after
   `test/native/run_tests.py -k boot`.
+
+## Changes after the first hardware run (2026-10-01)
+
+Found on a real board ([test/hil/RESULTS-2026-10-01.md](test/hil/RESULTS-2026-10-01.md)),
+fixed and tried on that board again. Both cost no flash.
+- **The B escape tests the power-on flag** (`hal_soft_reset()`, `hal.h`).
+  It tested the software-reset flag, which the chip also sets at power-on,
+  so B was never read and the menu always appeared.
+- **The box is 8 pixels wider and the progress bar runs under the title.**
+  A title is drawn 114 pixels wide and covered the inner border column of
+  the 112-pixel box. The bar starts and ends where the title field does.
+- **Not yet run through the native tests.** Their card and panel models need
+  `fork`, so they do not run on the Windows PC used. Owed: the host model of
+  the reset cause (`host_hal.c`) should set both flags at power-on as the
+  chip does, and every frame with a box needs re-pinning in `frames.json`
+  (`run_tests.py --pin-frames`), with the pictures in `docs/` redrawn.
 
 ## Testing
 

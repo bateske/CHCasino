@@ -81,7 +81,8 @@ UP info                                  # BOOT_VERSION 2
 **If D3 goes wrong**, try these in order:
 1. **No picture, or a garbled one.**
    - Hold B while switching on. The bootloader skips the card and the panel
-     and waits in USB mode (the LED blinks at 2 Hz).
+     and waits in USB mode (the LED blinks at 2 Hz; the backlight is lit
+     whenever the board is on).
    - Check that `UP probe` answers.
    - Note exactly what the screen did.
    - To go back: `UP selfupdate platform/board/arduino/CHGame/bootloaders/CHGame/chgame_bootloader.bin --yes`.
@@ -226,10 +227,12 @@ expected result.
       stays (it does not switch to "USB UPLOAD").
 - [ ] From a running game, upload: the touch reaches the bootloader as
       before.
-- [ ] The touch with no upload (`UP touch`) shows "USB UPLOAD / B: MENU";
-      B goes back to the menu.
-- [ ] Hold B while switching on: the screen does not change, and the LED
-      blinks at 2 Hz (USB mode). Release B, press it again: the menu.
+- [ ] From a running game, the touch with no upload (`UP touch`) shows
+      "USB UPLOAD / B: MENU"; B goes back to the menu. (Sent while the menu
+      is already up, the touch changes nothing.)
+- [ ] Hold B while switching on: no menu appears (the backlight is lit, as
+      always), and the LED blinks at 2 Hz (USB mode). Release B, press it
+      again: the menu.
 
 **Leaving a game**
 - [ ] In a game, hold START: after 3 s the menu appears, with that game
@@ -255,6 +258,9 @@ expected result.
       the installed game still starts.
 
 **Fragmentation**
+- [ ] Use a card with clusters of 32 KB or less: a package is at most
+      50,928 B, so with 64 KB clusters it is one cluster and cannot be
+      fragmented.
 - [ ] Through the SD card reader, fill the card with a few large filler
       files, delete every other one, then copy a game package.
 - [ ] `python tools/chgpack.py info` on an image of the card (or `chkdsk`)
