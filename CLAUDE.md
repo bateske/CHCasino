@@ -1,6 +1,7 @@
 # CHCasino: guide for agents
 
-Twenty Arduino games for the CHGame handheld, plus the platform they need.
+Twenty Arduino games for the CHGame handheld, plus the platform they need,
+including the bootloader with the SD game menu (`platform/bootloader`).
 Read [README.md](README.md) for the overview. This file is the working
 manual: setup, commands, limits, rules and gotchas. Each game also has a
 `NOTES.md` with its design decisions and open items. Read it before
@@ -34,12 +35,16 @@ changing that game.
 6. **`platform/` is vendored.** Leave `platform/board` and
    `platform/libraries/CHGfx` as their upstream releases unless a change is
    intended. If one is, record it in [platform/README.md](platform/README.md)
-   so it can go upstream.
+   so it can go upstream. `platform/bootloader` started as CH32SerialBoot
+   0.2.4's bootloader and is developed here; its README lists every change.
+   Its `src/sd.c` and `src/fat.c` are a C fork of CHSd: a fix to one belongs
+   in the other too.
 7. **Credits stay exactly as each game's `NOTICE` and README give them.** Do
    not add names from upstream projects' credit lists.
 8. **Every game needs its own save magic, debug macro prefix and debug
-   handshake id.** All games share the same two flash save pages; see
-   docs/status.md for the current collisions.
+   handshake id.** All games share the same two flash save pages. The last
+   collisions were fixed on 2026-10-01 (docs/status.md); check a new game's
+   values against every other game's.
 
 ## Setup
 
@@ -59,6 +64,10 @@ Manager), then `pip install -r tools/requirements.txt ziglang`.
 **Notes:**
 - The board package brings its own RISC-V GCC 8.2 and the `chgame-upload`
   tool, so nothing else is needed for device builds.
+- **Linux:** core 0.2.4's `ch32yyxx.h` includes `core_riscv_cH32yyxx.h` with a
+  capital H, which only resolves on case-insensitive file systems. Until the
+  board package fixes it:
+  `ln -s core_riscv_ch32yyxx.h ~/.arduino15/packages/CHGame/hardware/ch32v/0.2.4/cores/arduino/ch32/lib/core_riscv_cH32yyxx.h`.
 - **CHGfx needs no install.** `tools/device.py` compiles with
   `--library <repo>/platform/libraries/CHGfx`, and the simulator uses the same
   copy. With plain `arduino-cli compile`, add
@@ -87,6 +96,17 @@ Run from a game folder, `games/<Name>/`:
 | What fills the flash | `python ../../tools/check_size.py build/release --top 30` |
 | Redraw check (5 games) | `python tools/chsim/diffdrive.py <script> <outdir> [ticks]` |
 
+**The bootloader and the SD card** (from the repository root):
+
+| What | Command |
+|---|---|
+| Build the bootloader (+ size report) | `platform/bootloader/build.sh [release\|locked\|nomenu\|app] [--theme=rainbow\|plain\|casino]` |
+| Its PC test suite (flash/SD/panel models, power cuts, menu frames) | `python3 platform/bootloader/test/native/run_tests.py` |
+| Refresh the committed binaries | `platform/bootloader/tools/dist.sh` |
+| Build and pack every game into `out/sdcard/` (+ FAT32 image) | `python tools/sdcard/mkcard.py [--image out/sdcard.img]` |
+| Package one sketch / check packages / list a card | `python tools/chgpack.py pack\|verify\|info` |
+| Install the menu bootloader on a board | `platform/bootloader/HARDWARE.md` (self-update over USB) |
+
 The release FQBN is
 `CHGame:ch32v:CHGame:opt=oslto,rtlib=nano,periph=game,usb=uploadonly`. A debug
 build drops `usb=uploadonly` and adds
@@ -99,7 +119,7 @@ platform. Never override `compiler.cpp.extra_flags`.
 
 | | |
 |---|---|
-| Flash for the image | **50,944 B** (0x3000-0xF6FF). The bootloader takes 12 KB, and one page of metadata sits at 0xF700. |
+| Flash for the image | **50,944 B** (0x3000-0xF6FF). The bootloader takes 12 KB (the menu build uses 12,032 B of it, `platform/bootloader/SIZES.md`), and one page of metadata sits at 0xF700. |
 | Save pages | Two 256 B pages at the top of the app region. Keep the image ≤ **50,432 B** for both (A/B with CRC), ≤ 50,688 B for one. Past that, saving switches itself off. |
 | Static RAM | **18,416 B**: 20 KB less the 16 B boot block and the 2 KB stack. Under ~900 B free, Arduino warns. |
 | Stack | 2 KB (games report the high-water mark with the debug `P` command) |
@@ -158,8 +178,25 @@ three SD games keep the pretend SD card there; set `CHWD_CARD` /
 
 **Uploading.** `chgame-upload` (from the board package) uploads over USB
 CDC. It does the 1200-baud touch, flash, verify and restart itself; no
-buttons are needed. The board is USB VID:PID `16C0:27DD`, and
-`tools/serialcap.py` / `device.py` find its port by that.
+buttons are needed.
+
+**With the menu bootloader** (`platform/bootloader`, see
+[docs/sd-menu.md](docs/sd-menu.md)):
+- **Power-on** shows the SD game menu with the installed program
+  preselected. A starts it.
+- **After an upload** the sketch starts directly (RUN reset). It appears in
+  the menu as INSTALLED PROGRAM if it is not on the card.
+- **Uploads work while the menu is on screen**, and so do `device.py run`
+  and the debug protocol.
+- **Holding START for 3 s** in any game goes back to the menu (the shared
+  core's `pollButtons()`; `arduboy.startExits = false` opts out,
+  `arduboy.exitToMenu()` leaves on purpose). The games don't show it; it is
+  the platform's gesture. In the simulator the exit prints a line and ends
+  the run, so no script should hold START that long by accident.
+- **Holding B at power-on** skips the card and the panel: USB mode.
+
+The board is USB VID:PID `16C0:27DD`, and `tools/serialcap.py` /
+`device.py` find its port by that.
 
 **The board may be in use.** Someone may be playing it or listening to it,
 and other sessions may share it.
@@ -196,8 +233,12 @@ reader, with its serial port still working beside the drive:
    exFAT. Then eject. Sending any byte to the serial port returns a status
    line (`... CARD <blocks> RW CONNECTED`).
 4. Upload the game again (on the new port). This works while the drive is
-   mounted, with no buttons. Holding B for 1 s also returns to the
-   bootloader.
+   mounted, with no buttons. Holding B for 1 s, or START for 3 s, resets the
+   board (with the menu bootloader: back to the menu).
+
+**From the menu:** a card built by `tools/sdcard/mkcard.py` has CHSDtoUSB as
+the **SD CARD READER** entry. Pick it, copy, eject, then hold B to go back to
+the menu (B now resets instead of entering the bootloader).
 
 **What each game reads from the card:**
 - CHWords: `WORDS.DIC` in the root.
@@ -217,7 +258,10 @@ tooling (`check.py`, `diffdrive.py`). Then:
 2. Update `device.py`'s debug define.
 3. Keep `src/CHGame.*`, `debug/`, `save/` and `RamFunc.h` as they are unless
    there is a reason; they are the shared core
-   ([docs/game-anatomy.md](docs/game-anatomy.md)).
+   ([docs/game-anatomy.md](docs/game-anatomy.md)). The core gives the game
+   the START-held-3-s exit to the menu.
+4. Keep that exit unless the game needs a long START hold for itself
+   (`arduboy.startExits = false` in `setup()`).
 
 ## Gotchas
 

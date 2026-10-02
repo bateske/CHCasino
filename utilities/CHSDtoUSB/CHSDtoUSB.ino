@@ -148,6 +148,7 @@ static const uint16_t PALETTE[16] = {
 static bool safeMode = false;
 static uint32_t lastUi = 0, lastRate = 0, lastBlocks = 0, rateKBs = 0, nextProbe = 0, lastButtons = 0;
 static uint32_t bHeld = 0;                                 // when B went down
+static uint32_t sHeld = 0;                                 // when START went down
 static bool prevA = false, prevStart = false, bDown = false;
 
 static bool pressed(uint8_t pin) { return digitalRead(pin) == LOW; }
@@ -371,19 +372,26 @@ void loop() {
         lastButtons = now;
         bool a = pressed(PIN_BTN_A), start = pressed(PIN_BTN_START);
         if (a && !prevA && !safeMode) pressA();
-        if (start && !prevStart && !safeMode) pressStart();
+        if (start && !prevStart) {
+            sHeld = now;
+            if (!safeMode) pressStart();
+        }
         prevA = a; prevStart = start;
         if (pressed(PIN_BTN_B)) {
             if (!bDown) { bDown = true; bHeld = now; }
-            if (now - bHeld > 1000 && !safeMode) {
-                gfx_clear(BG);
-                centred(56, "BOOTLOADER", GOLD, 2);
-                gfx_flush();
-                usbmsc::detach();
-                delay(300);
-                chgame_enter_bootloader();
-            }
         } else bDown = false;
+        // B held 1 s, or START held 3 s as in every CHCasino game: back to the
+        // SD game menu. With the menu bootloader any reset without a request
+        // shows the menu. (Uploads still reach the bootloader through the
+        // 1200-baud touch.)
+        if (!safeMode && ((bDown && now - bHeld > 1000) || (start && now - sHeld >= 3000))) {
+            gfx_clear(BG);
+            centred(56, "MENU", GOLD, 2);
+            gfx_flush();
+            usbmsc::detach();
+            delay(300);
+            NVIC_SystemReset();
+        }
     }
 
     // Screen at ~8 Hz, only between SCSI commands (the LCD shares SPI1).

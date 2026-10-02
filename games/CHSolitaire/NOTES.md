@@ -26,10 +26,10 @@ Agent-facing notes for continuing work here; rules, controls and build are in RE
 
 ## Open items
 
-- Device run: pace, sound by ear, card legibility, real frame times. A device debug build (`tools/device.py upload --debug`) keeps saving unless built with `-DCHSL_LEAN=1`, so it writes the shared save pages like the release; put the release build back afterwards.
+- Device run: pace, sound by ear, card legibility, real frame times. A device debug build (`tools/device.py upload --debug`) keeps saving unless built with `-DCHSO_LEAN=1`, so it writes the shared save pages like the release; put the release build back afterwards.
 - The owner's art pass on the card backs (tools/art/backs/*.txt, 15x21 in palette letters; a palette-exact PNG of the same name overrides one).
 - The owner's verdict on the plan-level choices listed above.
-- Known issue (logged, not fixed; see ../../docs/status.md): the save magic `0x4C534843` "CHSL" in src/save/Save.cpp, the debug handshake id "CHSL" (tools/chsim/chdrive.py `--id` default) and the `CHSL_` macro prefix (CHSL_DEBUG etc.) are the same as CHSlots'. After switching between the two games one can read the other's save record. A fix needs a new magic (existing saves are then ignored) and a matching handshake/`--id`.
+- Fixed 2026-10-01 (with the SD game menu, which makes switching games routine): the save magic, the debug handshake id and the macro prefix used to be CHSlots' (`0x4C534843` "CHSL", `CHSL_`). They are now `0x4F534843` "CHSO", handshake "CHSO" (tools/chsim/chdrive.py `--id` default) and `CHSO_` (CHSO_DEBUG etc.). A save written by an older build is ignored once.
 
 ## Gotchas
 

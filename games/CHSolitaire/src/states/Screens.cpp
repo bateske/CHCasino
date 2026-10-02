@@ -504,7 +504,7 @@ static void statsRender(uint32_t frame) {
 // ---------------------------------------------------------------------------
 // Debug protocol hooks (tools/chsim/chdrive.py 'say')
 // ---------------------------------------------------------------------------
-#if CHSL_DEBUG
+#if CHSO_DEBUG
 //   G <seed>           deal that game (with the options as they are)
 //   W <cards>          all but that many cards already on the foundations
 //   O <i> <value>      set option byte i
@@ -609,7 +609,7 @@ void begin() {
     if (opt.back >= art::BACKS) opt.back = 0;
     audio::begin(true);
     applyOptions();
-#if CHSL_DEBUG
+#if CHSO_DEBUG
     dbg::hook = debugHook;
 #endif
     enter(Scr::Title);

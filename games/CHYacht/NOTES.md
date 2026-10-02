@@ -5,7 +5,7 @@ Agent-facing notes for continuing work here; rules, controls and build are in RE
 ## Snapshot
 
 - Imported from https://github.com/bateske/CHYacht at commit 751b026 (2026-10-01); develop here now, not in the old repo.
-- Release build (FQBN `CHGame:ch32v:CHGame:opt=oslto,rtlib=nano,periph=game,usb=uploadonly`, core 0.2.4, CHGfx 1.3.0): flash 43,476 of 50,944 B (7,468 spare; the image is 43,732 B, so both save pages fit with 4,700 B to go), static RAM 14,996 of 18,416 B (3,420 spare).
+- Release build (FQBN `CHGame:ch32v:CHGame:opt=oslto,rtlib=nano,periph=game,usb=uploadonly`, core 0.2.4, CHGfx 1.3.0): flash 43,476 of 50,944 B (7,468 spare; the image is 43,732 B, so both save pages fit with 6,700 B to go), static RAM 14,996 of 18,416 B (3,420 spare).
 - Verification: simulator and host tests only, all passing as of 2026-10-01 (not re-run since the import). There is no tools/check.py here; run these by hand:
   - `tools/tests/run_tests.py`: the rules against an oracle over all 7,776 rolls, the house player's self-play and the paytable's return, the 3D dice physics at every power for every set of kept dice.
   - `tools/tests/sim_save.py`: save mid-turn, reboot, continue; a finished game leaves nothing to continue but keeps the purse.
@@ -26,7 +26,7 @@ Agent-facing notes for continuing work here; rules, controls and build are in RE
 
 ## Open items
 
-- Known issue (logged, not fixed; see ../../docs/status.md): the save magic in src/save/Save.cpp is `0x52434843`, which is "CHCR", the same as CHCraps's; its comment says "CHYD". After switching between the two games one can read the other's save record. A fix needs a new magic (e.g. "CHYD" = `0x44594843`), which makes existing saves be ignored. The debug handshake is already CHYD.
+- Fixed 2026-10-01 (with the SD game menu, which makes switching games routine): the save magic in src/save/Save.cpp was `0x52434843`, CHCraps's "CHCR"; it is now "CHYD" = `0x44594843`, as its comment always said. A save written by an older build is ignored once. The debug handshake was already CHYD.
 - Device run: dice cam frame times, the feel of shaking and throwing, sounds, saving across a power cycle. Device debug builds are `CHYD_LEAN` (no saving, no Options/Stats pages; `-DCHYD_FULL` keeps them). Put the release build back afterwards.
 
 ## Gotchas

@@ -1,0 +1,122 @@
+/*
+ * Boot decision (docs/sd-menu.md, platform/bootloader/README.md):
+ *
+ *   reset -> read and clear the boot request
+ *    |- RUN and the installed program is valid  -> jump to it (nothing touched yet)
+ *    |- USB request, or B held at power-on      -> USB upload mode
+ *       (power-on only: a program that resets with B still down, like
+ *       CHSDtoUSB's hold-B, goes to the menu)
+ *    '- otherwise                               -> the SD game menu (menu.c)
+ *
+ * Neither USB mode nor the menu has a timeout. The program is only ever
+ * entered through a RUN reset, so it always starts from real reset state.
+ */
+#include "boot.h"
+#include "bootreq.h"
+#include "appmeta.h"
+#include "flash.h"
+#include "jump.h"
+#include "proto.h"
+#include "sys.h"
+#include "hal.h"
+#if CHBOOT_MENU
+#include "menu.h"
+#endif
+
+#if CHBOOT_APP
+/* The dry-run build runs as a program under any bootloader: no USB, no flash
+   writes, straight into the menu. */
+void boot_reset(uint32_t reason)
+{
+    bootreq_set(reason);
+    hal_reset();
+}
+
+void boot_main(void)
+{
+    sys_init();
+    hal_pins_init();
+    menu_main(APP_INVALID_NO_META);
+    for (;;) { }
+}
+#else
+
+void boot_reset(uint32_t reason)
+{
+    proto_shutdown();
+    bootreq_set(reason);
+    hal_reset();
+}
+
+#if CHBOOT_MENU
+/* B held while switching on skips the card and the panel altogether: the way
+ * out if a card ever upsets the menu. The pull-ups need a moment to charge the
+ * lines, and the key must read pressed on every sample over ~8 ms. */
+static int b_held(void)
+{
+    uint32_t n;
+
+    sys_delay_ms(1);
+    for (n = 0; n < 8; n++) {
+        if (!(hal_buttons() & BTN_B))
+            return 0;
+        sys_delay_ms(1);
+    }
+    return 1;
+}
+#endif
+
+void usb_mode(void)
+{
+#if CHBOOT_MENU
+    uint32_t prev = hal_buttons(), now, t = sys_ticks();
+#endif
+
+    proto_init();
+    for (;;) {
+        proto_task();
+        hal_led((sys_ticks() / (SYS_TICKS_PER_MS * 250u)) & 1u);   /* 2 Hz */
+#if CHBOOT_MENU
+        /* Only a fresh press counts: a B still held from power-on must not
+           go straight back to the menu. Sampled every 20 ms, longer than
+           contact bounce, so the bounce of releasing B never reads as a
+           press. */
+        if (sys_ticks() - t >= 20u * SYS_TICKS_PER_MS) {
+            t = sys_ticks();
+            now = hal_buttons();
+            if (now & ~prev & BTN_B)
+                boot_reset(0);
+            prev = now;
+        }
+#endif
+    }
+}
+
+void boot_main(void)
+{
+    uint32_t req = bootreq_take();
+    int app = appmeta_check();
+#if CHBOOT_MENU
+    int soft;
+
+    if (req == CHGAME_BOOTREQ_RUN && app == APP_VALID)
+        jump_to_app();
+#else
+    if (req != CHGAME_BOOTREQ_USB && app == APP_VALID)
+        jump_to_app();
+#endif
+
+    ramfunc_init();   /* flash routines must be resident in SRAM before first use */
+    sys_init();
+    hal_pins_init();
+
+#if CHBOOT_MENU
+    soft = hal_soft_reset();
+    if (req == CHGAME_BOOTREQ_USB)
+        menu_usb_notice();
+    else if (soft || !b_held())
+        menu_main(app);   /* returns only to hand over to USB mode */
+#endif
+    usb_mode();
+}
+#endif /* CHBOOT_APP */

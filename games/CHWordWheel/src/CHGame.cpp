@@ -78,6 +78,17 @@ void CHGame::pollButtons() {
         if (cur & (1u << i)) { if (held[i] < 0xFFFF) held[i]++; }
         else held[i] = 0;
     }
+    if (startExits && held[6] >= 180) chgame_exitToMenu();     // START, 3 s of 60 Hz ticks
+}
+
+void chgame_exitToMenu() {
+#ifdef CHSIM
+    fprintf(stderr, "chsim: START held 3 s: exit to the menu\n");
+    exit(0);
+#else
+    NVIC_SystemReset();             // no request: the menu bootloader shows the menu
+    for (;;) { }
+#endif
 }
 
 bool CHGame::repeat(uint8_t b, uint8_t delay, uint8_t rate) const {

@@ -11,6 +11,7 @@ toolchain, which the Boards Manager installs.
 | `board/docs/` | The board's docs: hardware pin map, flash/RAM map, boot flow, upload protocol, recovery, CH32X035 gotchas, building the bootloader | 0.2.4 | same tag, folder `docs` | MIT |
 | `libraries/CHGfx/` | The graphics library | 1.3.0 | [bateske/CHGfx](https://github.com/bateske/CHGfx) tag `1.3.0` (838bbb0) | MIT (+ font notices in its `LICENSE`) |
 | `libraries/CHSd/` | Read-only SD card + FAT16/32 library. **This is now its master copy.** | 1.0.0 | CHSd had no repository of its own before CHCasino | MIT |
+| `bootloader/` | The bootloader with the SD game menu: sources, PC test suite, built binaries. **Developed here**; started as CH32SerialBoot's `bootloader/` (+ `shared/`, `host/py/`, `test/`) | 0.2.4 + the SD menu (BOOT_VERSION 2) | [bateske/CH32SerialBoot](https://github.com/bateske/CH32SerialBoot) tag `v0.2.4` (5de3006) | MIT (+ BSD font, `bootloader/NOTICE`) |
 | `hardware/` | Rev 0 schematic (PDF) and netlist (EasyEDA `.tel`) | 2026-08-21 | | |
 
 ## The board package (`board/`)
@@ -91,6 +92,33 @@ builds and reads FAT16/FAT32 card images; it is useful for any SD work.
 4. For a new board package version, also install it (`core install
    CHGame:ch32v@<version>`) and update the version in `CLAUDE.md` and the
    README.
+
+## The bootloader (`bootloader/`)
+
+The board's permanent bootloader with a game menu that installs games from
+the SD card ([../docs/sd-menu.md](../docs/sd-menu.md)). Its first commit in
+CHCasino is the unchanged CH32SerialBoot 5de3006 copy (with `bootloader/`
+flattened into the folder); everything since is the SD menu work, ready to
+go upstream. [bootloader/README.md](bootloader/README.md) has the design,
+the differences from 0.2.4, building, testing and installing.
+
+**It does not replace the board package.**
+- `board/arduino/CHGame/bootloaders/CHGame/chgame_bootloader.bin` is still
+  the 0.2.4 bootloader, and the IDE's *Burn Bootloader* writes that one.
+- Games build against core 0.2.4 unchanged; the menu bootloader is
+  compatible with it.
+- To ship the menu through the Boards Manager, a board package release must
+  carry `bootloader/release/chgame_sdboot.bin`.
+
+## Problems found in the board package (for upstream)
+
+- **Linux builds fail.** `cores/arduino/ch32/lib/ch32yyxx.h` includes
+  `core_riscv_cH32yyxx.h`; the file is `core_riscv_ch32yyxx.h`. It works only
+  on case-insensitive file systems (Windows, default macOS). CLAUDE.md gives
+  the symlink workaround.
+- **Stale comments.** Several say the bootloader is 8 KB and the app starts
+  at 0x2000 (`link_chgame_app.ld`, `chgame_map.h`); the code says 12 KB and
+  0x3000.
 
 ## Local changes
 

@@ -23,7 +23,7 @@ Agent-facing notes for continuing work here; rules, controls and build are in RE
 
 - First device run. Unmeasured on hardware: the CPU's positions per second (it thinks in 5 ms slices; THE BOSS is capped at 30,000 positions), frame times (simulator estimate for the zoomed title was ~10-12 ms, noisy), and the sound. On a debug build, `say W` reports the last choice's positions, depth, score, time and longest slice; `tools/scripts/perf.txt` gives frame times.
 - Awaiting the owner's review: the 98 revised coach lines in `src/game/Taunt.cpp`, and the generated disc art (`tools/art/gen/disc.png`, `disc_big.png`).
-- Known issue (logged, not fixed): the save magic in `src/save/Save.cpp` is `0x47424843`, which spells "CHBG" - CHBackgammon's magic - although its comment says "CHF4". Today the record versions differ (CHFour 1, CHBackgammon 2), so neither accepts the other's save, but a version bump on either side would make them read each other's records. Give it its own magic (and accept the one-time loss of saves) when touching saving. See docs/status.md.
+- Fixed 2026-10-01 (with the SD game menu, which makes switching games routine): the save magic in `src/save/Save.cpp` was `0x47424843`, CHBackgammon's "CHBG" (only the record versions kept them apart); it is now "CHF4" = `0x34464843`, as its comment always said. A save written by an older build is ignored once.
 
 ## Gotchas
 

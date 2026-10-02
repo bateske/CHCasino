@@ -13,3 +13,6 @@ __pycache__/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Built SD card contents (tools/sdcard/mkcard.py)
+/out/

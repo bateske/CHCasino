@@ -13,8 +13,12 @@ buttons, a piezo speaker, a status LED and **USB-C**. It uploads over USB
 with no button presses, like an Arduino Leonardo.
 
 The games share one look: a casino of green felt, gold lettering, casino
-chips and a dealer. The longer-term aim is to put them all on one SD card
-behind a multi-game loader. For now each game is its own Arduino sketch.
+chips and a dealer. They all fit on one SD card behind the **game menu built
+into the bootloader**: switch on, pick a game, play, with no PC, like an
+Arduboy FX ([docs/sd-menu.md](docs/sd-menu.md)). Each game is still its own
+Arduino sketch, uploaded as usual during development.
+
+![The SD game menu](platform/bootloader/docs/menu.png)
 
 > **For AI agents and new developers:** read [CLAUDE.md](CLAUDE.md) first.
 > It has the build, simulator and test commands, the rules of the codebase,
@@ -61,11 +65,13 @@ CHCasino/
 ├── games/             the 20 games, one Arduino sketch each
 ├── utilities/         helper sketches (CHSDtoUSB: the SD card as a USB drive)
 ├── platform/          everything a build needs, vendored at a known version
+│   ├── bootloader/      the bootloader with the SD game menu: sources, PC test suite, binaries
 │   ├── board/           the CHGame Arduino board package (core, variant, bootloader) + its docs
 │   ├── libraries/CHGfx/ the graphics library
 │   ├── libraries/CHSd/  the read-only SD/FAT library (source of the games' src/sd copies)
 │   └── hardware/        Rev 0 schematic and netlist
-├── tools/             PLATFORM-WIDE tools shared by every game (the PC simulator, size report, serial)
+├── tools/             PLATFORM-WIDE tools shared by every game (the PC simulator, size report, serial,
+│                      chgpack.py for game packages, sdcard/mkcard.py for the whole card)
 └── docs/              platform knowledge: hardware, performance, SD card, how a game is built, status
 ```
 
@@ -93,6 +99,10 @@ python tools/chsim/chdrive.py --sim . tools/scripts/endings.txt out/endings   # 
 
 # 4. On a board (plugged in by USB)
 python tools/device.py upload
+
+# 5. A card for the game menu: builds and packs every game into out/sdcard/
+cd ../..
+python tools/sdcard/mkcard.py             # copy out/sdcard/* to a FAT32 card
 ```
 
 The Arduino IDE also works: install the board package from the Boards
@@ -173,7 +183,28 @@ own `src/`, often adapted (see [docs/game-anatomy.md](docs/game-anatomy.md)):
   CHGfx's real drawing code for the PC, runs it deterministically, and
   produces screenshots and GIFs;
 - the flash/RAM **size report** (`check_size.py`);
-- the USB **serial** helper (`serialcap.py`).
+- the USB **serial** helper (`serialcap.py`);
+- the **game package** tool (`chgpack.py`): wraps any sketch's `.bin` as a
+  `.CHG` for the SD menu, checks packages, lists a card;
+- the **card builder** (`sdcard/mkcard.py`): builds every game and lays out
+  a whole card.
+
+### The bootloader and the SD game menu: `platform/bootloader/`
+
+The board's permanent bootloader (12 KB at 0x0000), from CH32SerialBoot
+0.2.4, with a game menu added:
+- the menu appears at every power-on and lists `GAMES/*.CHG` from a
+  FAT16/FAT32 card;
+- the installed game is preselected, and starting it writes nothing;
+- holding START for 3 s in any game goes back to the menu;
+- another game is checked completely before anything is erased;
+- USB uploading, recovery and the memory map are unchanged.
+
+It has its own PC test suite, which runs the real C code against models of
+the flash, SD card and panel, including a power cut at every flash
+operation of an install. Its README covers building, testing and installing
+it; [docs/sd-menu.md](docs/sd-menu.md) is the players' guide and
+[docs/chg-format.md](docs/chg-format.md) the developers' one-pager.
 
 Tools that each game has adapted stay with the game: the script driver
 `chdrive.py`, `device.py`, `check.py`, the tests, the audio preview and the
@@ -189,6 +220,7 @@ Each folder carries its own licence:
 | `games/*` | Apache-2.0 (see each game's `LICENSE` and `NOTICE`). CHChess's engine `src/engine/ch2k.hpp` is MPL-2.0. |
 | `tools/` | Apache-2.0 (`tools/LICENSE`, `tools/NOTICE`) |
 | `platform/board/` | MIT (`platform/board/LICENSE`, `THIRD-PARTY.md`) |
+| `platform/bootloader/` | MIT (`LICENSE`, `THIRD-PARTY.md`, `NOTICE`: its 5x7 font is Adafruit glcdfont, BSD) |
 | `platform/libraries/CHGfx/` | MIT; some fonts carry their own notices (in its `LICENSE`, e.g. the 3x5 font is Apache-2.0) |
 | `platform/libraries/CHSd/` | MIT |
 | `utilities/CHSDtoUSB/` | GPL-3.0 (its SD layer comes from sdfatlib) |

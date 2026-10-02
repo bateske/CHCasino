@@ -1,0 +1,27 @@
+{
+  "_comment": "What tools/sdcard/mkcard.py puts on the card: each program's folder, its file name in GAMES/ (8.3), the title the menu shows (19 characters fit on the screen), and any data files it reads from the card. Order does not matter: the menu sorts by title.",
+  "programs": [
+    {"dir": "games/CHBackgammon", "file": "BACKGAMN.CHG", "title": "BACKGAMMON"},
+    {"dir": "games/CHBingo",      "file": "BINGO.CHG",    "title": "BINGO"},
+    {"dir": "games/CHBlackjack",  "file": "BLACKJCK.CHG", "title": "BLACKJACK"},
+    {"dir": "games/CHBoardwalk",  "file": "BOARDWLK.CHG", "title": "BOARDWALK"},
+    {"dir": "games/CHCheckers",   "file": "CHECKERS.CHG", "title": "CHECKERS"},
+    {"dir": "games/CHChess",      "file": "CHESS.CHG",    "title": "CHESS"},
+    {"dir": "games/CHCraps",      "file": "CRAPS.CHG",    "title": "CRAPS"},
+    {"dir": "games/CHCrossword",  "file": "CROSSWRD.CHG", "title": "CROSSWORD", "data": ["sdcard/CHCW"]},
+    {"dir": "games/CHDominoes",   "file": "DOMINOES.CHG", "title": "DOMINOES"},
+    {"dir": "games/CHFour",       "file": "FOURROW.CHG",  "title": "FOUR IN A ROW"},
+    {"dir": "games/CHMahjong",    "file": "MAHJONG.CHG",  "title": "MAHJONG"},
+    {"dir": "games/CHPoker",      "file": "POKER.CHG",    "title": "POKER"},
+    {"dir": "games/CHRoulette",   "file": "ROULETTE.CHG", "title": "ROULETTE"},
+    {"dir": "games/CHSlots",      "file": "SLOTS.CHG",    "title": "SLOTS"},
+    {"dir": "games/CHSnakes",     "file": "SNAKES.CHG",   "title": "SNAKES & LADDERS"},
+    {"dir": "games/CHSolitaire",  "file": "SOLITAIR.CHG", "title": "SOLITAIRE"},
+    {"dir": "games/CHTicTacToe",  "file": "TICTACTO.CHG", "title": "TIC TAC TOE: ROYALE"},
+    {"dir": "games/CHWords",      "file": "WORDS.CHG",    "title": "WORDS", "data": ["sdcard/WORDS.DIC"]},
+    {"dir": "games/CHWordWheel",  "file": "WORDWHL.CHG",  "title": "WORD WHEEL", "data": ["sdcard/PHRASES.BNK"]},
+    {"dir": "games/CHYacht",      "file": "YACHT.CHG",    "title": "YACHT DICE"},
+    {"dir": "utilities/CHSDtoUSB", "file": "SDTOUSB.CHG", "title": "SD CARD READER",
+     "fqbn": "CHGame:ch32v:CHGame"}
+  ]
+}

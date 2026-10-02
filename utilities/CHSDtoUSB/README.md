@@ -20,7 +20,7 @@ bootloader was changed.
 |---|---|
 | A | rescan the card: brings the drive back after it was ejected |
 | START | toggle read-only (the PC is told the medium changed) |
-| B, held 1 s | detach and reboot into the bootloader |
+| B held 1 s, or START held 3 s | detach and return to the SD game menu (a reset; with a bootloader older than the menu it just restarts this sketch). START held 3 s is the platform's exit gesture, the same in every game |
 | B, held while powering on | **safe mode**: never take over USB, stay a plain CHGame serial device |
 
 The screen shows the card size, what the PC is doing (WAITING FOR PC,
@@ -200,9 +200,16 @@ Bring-up option: `--build-property build.extra_flags=-DCHSD_AUTOBOOT_MS=60000`
 makes the sketch return to the bootloader after 60 s no matter what state
 USB is in, so an experimental USB change can never lock you out.
 
-If the board is ever unreachable: hold B while switching it on (safe mode),
-then upload something else. The bootloader's BOOT-button recovery is the last
-resort ([`platform/board/docs/recovery.md`](../../platform/board/docs/recovery.md)).
+If the board is ever unreachable: hold B while switching it on, then upload
+something else. With the SD menu bootloader that keeps the board in the
+bootloader's USB upload mode (it never starts this sketch); with an older
+bootloader it starts this sketch in safe mode. The bootloader's BOOT-button
+recovery is the last resort
+([`platform/board/docs/recovery.md`](../../platform/board/docs/recovery.md)).
+
+On a card for the SD game menu ([`docs/sd-menu.md`](../../docs/sd-menu.md))
+this sketch is the "SD CARD READER" entry: pick it, copy games into `GAMES/`
+from the PC, eject, then hold B (or switch off and on) to go back to the menu.
 
 ## Limits
 

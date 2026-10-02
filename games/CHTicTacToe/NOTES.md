@@ -5,7 +5,7 @@ Agent-facing notes for continuing work here; rules, controls and build are in RE
 ## Snapshot
 
 - Imported from https://github.com/bateske/CHTicTacToe at commit db8274c (2026-10-01); develop here now, not in the old repo.
-- Release build (FQBN `CHGame:ch32v:CHGame:opt=oslto,rtlib=nano,periph=game,usb=uploadonly`, core 0.2.4, CHGfx 1.3.0): flash 50,052 of 50,944 B (892 spare); the image (256 B more) is 50,308 B, only 124 B under the 50,432 B line that keeps both save pages), static RAM 15,176 of 18,416 B (3,240 spare). README's "50,308 B" (How it fits) and "43.9 KB" (Installing) are older figures; trust check_size.
+- Release build (FQBN `CHGame:ch32v:CHGame:opt=oslto,rtlib=nano,periph=game,usb=uploadonly`, core 0.2.4, CHGfx 1.3.0): flash 50,096 of 50,944 B (848 spare); the image (256 B more) is 50,352 B, only 80 B under the 50,432 B line that keeps both save pages (2026-10-02, after the core's hold-START exit took 44 B), static RAM 15,176 of 18,416 B (3,240 spare). README's "50,308 B" (How it fits) and "43.9 KB" (Installing) are older figures; trust check_size.
 - Verification: simulator and host tests only, as of 2026-10-01 (not re-run since the import): `tools/tests/run_tests.py` (rules, dealer, match flow); scripts smoke, endings, save, iso, hover, perf, showcase, gameplay all deterministic with no BUG lines; `tools/chsim/diffdrive.py` on tools/scripts/diff_iso.txt with 0 stale frames. There is no tools/check.py here: run those plus `python tools/device.py build` by hand.
 - Never run on a CHGame: frame times (simulator estimates: full iso frame ~7 ms, glove move ~5-6 ms), the dealer's thinking time and every sound are unchecked.
 
@@ -26,7 +26,7 @@ Agent-facing notes for continuing work here; rules, controls and build are in RE
 ## Open items
 
 - The owner's verdict on the iso look and on the extra tables.
-- Device run: iso frame times (full and band redraws), dealer time on the big felts (12 cells a frame), every sound. Device debug builds are `CHTT_LEAN` (no saving, plain end-screen lettering) and were within ~50 B of the 50,944 B ceiling when the release was 50,308 B; `-DCHTT_FULL` does not fit. Put the release build back afterwards.
+- Device run: iso frame times (full and band redraws), dealer time on the big felts (12 cells a frame), every sound. Device debug builds are `CHTT_LEAN` (no saving, plain end-screen lettering) and are 28 B under the 50,944 B ceiling (50,916 B, with the 50,352 B release); `-DCHTT_FULL` does not fit. Put the release build back afterwards.
 - Logo touch-up: tools/art/logo.txt and royale.txt (drafted by tools/make_logo.py from Arial Black and Georgia; the .txt files are the source).
 - Optional music: impossible without cuts elsewhere.
 

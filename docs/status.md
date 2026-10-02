@@ -1,4 +1,4 @@
-# Status of the games (as of 2026-10-01)
+# Status of the games (as of 2026-10-02)
 
 **What the columns mean:**
 - **Image:** the release build (`opt=oslto,rtlib=nano,periph=game,usb=uploadonly`,
@@ -12,26 +12,26 @@
 
 | Game | Image | Save room | RAM | Simulator | Device |
 |---|---|---|---|---|---|
-| CHBackgammon | 49,524 | 908 | 16,924 | check.py | never run |
-| CHBingo | 36,724 | 13,708 | 15,208 | tests, scripts, sim_save, diffdrive | never run |
-| CHBlackjack | 45,812 | 4,620 | 15,736 | tests, scripts | **runs; render times measured** (the last art-only commit not re-run) |
-| CHBoardwalk | 49,856 | 576 | 15,404 | tests, scripts | never run |
-| CHCheckers | 42,024 | 8,408 | 17,436 | check.py | never run |
-| CHChess | 48,884 | 1,548 | 17,872 | tests, scripts | **runs; render and think times, stack measured** |
-| CHCraps | 50,032 | 400 | 15,520 | tests, scripts, sim_save | never run |
-| CHCrossword | 50,300 | 132 | 17,540 | check.py (incl. FAT card images) | never run |
-| CHDominoes | 42,356 | 8,076 | 17,296 | check.py | never run |
-| CHFour | 36,332 | 14,100 | 16,388 | check.py | never run |
-| CHMahjong | 48,364 | 2,068 | 18,084 | tests, scripts | an early build ran well; current build not run |
-| CHPoker | 48,908 | 1,524 | 15,868 | tests, scripts | never run |
-| CHRoulette | 49,796 | 636 | 16,084 | tests, scripts, ball tests, diffdrive | never run |
-| CHSlots | 47,112 | 3,320 | 14,788 | tests, scripts, diffdrive | never run |
-| CHSnakes | 37,336 | 13,096 | 15,704 | check.py | never run |
-| CHSolitaire | 31,144 | 19,288 | 16,540 | check.py | never run |
-| CHTicTacToe | 50,308 | 124 | 15,176 | tests, scripts, diffdrive | never run |
-| CHWords | 50,396 | 36 | 15,836 | check.py (incl. the SD dictionary) | never run |
-| CHWordWheel | 50,312 | 120 | 15,244 | check.py (incl. the SD bank, diffdrive) | never run |
-| CHYacht | 43,732 | 4,700 | 14,996 | tests, scripts, sim_save | never run |
+| CHBackgammon | 49,580 | 852 | 16,924 | check.py | never run |
+| CHBingo | 36,748 | 13,684 | 15,208 | tests, scripts, sim_save, diffdrive | never run |
+| CHBlackjack | 45,872 | 4,560 | 15,736 | tests, scripts | **runs; render times measured** (the last art-only commit not re-run) |
+| CHBoardwalk | 49,884 | 548 | 15,404 | tests, scripts | never run |
+| CHCheckers | 42,048 | 8,384 | 17,444 | check.py | never run |
+| CHChess | 48,904 | 1,528 | 17,880 | tests, scripts | **runs; render and think times, stack measured** |
+| CHCraps | 50,064 | 368 | 15,520 | tests, scripts, sim_save | never run |
+| CHCrossword | 50,312 | 120 | 17,540 | check.py (incl. FAT card images) | never run |
+| CHDominoes | 42,364 | 8,068 | 17,296 | check.py | never run |
+| CHFour | 36,356 | 14,076 | 16,388 | check.py | never run |
+| CHMahjong | 48,456 | 1,976 | 18,084 | tests, scripts | an early build ran well; current build not run |
+| CHPoker | 48,940 | 1,492 | 15,868 | tests, scripts | never run |
+| CHRoulette | 49,804 | 628 | 16,084 | tests, scripts, ball tests, diffdrive | never run |
+| CHSlots | 47,092 | 3,340 | 14,788 | tests, scripts, diffdrive | never run |
+| CHSnakes | 37,348 | 13,084 | 15,704 | check.py | never run |
+| CHSolitaire | 31,184 | 19,248 | 16,540 | check.py | never run |
+| CHTicTacToe | 50,352 | 80 | 15,176 | tests, scripts, diffdrive | never run |
+| CHWords | 50,416 | 16 | 15,836 | check.py (incl. the SD dictionary) | never run |
+| CHWordWheel | 50,348 | 84 | 15,244 | check.py (incl. the SD bank, diffdrive) | never run |
+| CHYacht | 43,732 | 6,700 | 14,996 | tests, scripts, sim_save | never run |
 
 When the games moved into CHCasino, every simulator script (211), host
 test, audio preview, redraw check and release build was re-run and compared
@@ -48,24 +48,46 @@ sketchbook libraries.
 - saving across a power cycle;
 - for the SD games, a real card. CHSd has never read one on a board.
 
+## The bootloader with the SD game menu
+
+[platform/bootloader](../platform/bootloader) (BOOT_VERSION 2):
+
+| | Verified | Device |
+|---|---|---|
+| Menu bootloader (release, 12,032 B) | PC suite (`test/native/run_tests.py`): flash/SD/panel models, every package error, power cuts at every flash operation of an install and of an upload, all 21 real packages installed in turn, 26 pinned menu frames (three colour themes) | **never run**; [HARDWARE.md](../platform/bootloader/HARDWARE.md) has the steps |
+| Card builder (`tools/sdcard/mkcard.py`) | all 20 games and CHSDtoUSB built and packed; payloads equal the release images above | |
+
+The first device session follows HARDWARE.md:
+- **HW1:** the menu as a program, under the current bootloader.
+- **HW2a:** the new code without the menu.
+- **HW2b:** the menu bootloader.
+- **HW3:** the matrix.
+
+Its open questions are the SD clock that real cards take (12 MHz is
+assumed), the panel's colour order, install time, and the CHSd timings on
+real cards.
+
 ## Known issues
 
-### Save magics that collide
+### Save magics (fixed 2026-10-01)
 
 All games keep their saves in the same two flash pages, and each must
 recognise only its own records. A record is accepted when its magic **and**
-version match.
+version match. Until 2026-10-01 three pairs collided:
 
-| Games | Magic | Effect |
+| Games | Old magic | Now |
 |---|---|---|
-| CHSlots, CHSolitaire | `0x4C534843` "CHSL", both version 1 | **Live.** After playing one, the other accepts its save as its own, with a different layout. The two also share the debug handshake id `CHSL` and the `CHSL_DEBUG` macro. |
-| CHCraps, CHYacht | `0x52434843` "CHCR", both version 1 | **Live.** CHYacht's comment says "CHYD", but the value is CHCraps'. |
-| CHBackgammon, CHFour | `0x47424843` "CHBG" (version 2 vs 1) | **Latent.** The versions differ today, so neither accepts the other's record. CHFour's comment says "CHF4". |
+| CHSlots, CHSolitaire | `0x4C534843` "CHSL", both version 1 (live), plus the same debug id and `CHSL_` prefix | CHSolitaire: magic `0x4F534843` "CHSO", handshake `CHSO`, prefix `CHSO_` |
+| CHCraps, CHYacht | `0x52434843` "CHCR", both version 1 (live) | CHYacht: `0x44594843` "CHYD" |
+| CHBackgammon, CHFour | `0x47424843` "CHBG", versions 2 and 1 (latent) | CHFour: `0x34464843` "CHF4" |
 
-**Fix:** give CHSolitaire, CHYacht and CHFour magics of their own. CHSolitaire
-also needs its own debug prefix and handshake id. Any saves they hold are
-lost once. These were left as they are so that the move into CHCasino
-changed no behaviour.
+They were fixed with the SD game menu, which makes switching games routine.
+A save written by an older build of those three games is ignored once. The
+simulator frames of all three were compared before and after (identical:
+69, 54 and 39 images) and their release images did not change size.
+
+Every game still shares the two pages: the next game to save overwrites the
+last one's record. [sd-menu.md](sd-menu.md) says so to players.
 
 ### Other
 

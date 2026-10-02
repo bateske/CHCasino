@@ -47,9 +47,14 @@ and `NVIC_SystemReset()`.
 
 ## Boot, upload and USB
 
-**Startup.** The bootloader checks the sketch's CRC and jumps to it within
-a few milliseconds of power-on. USB enumerates in the background while
-`setup()` runs.
+**Startup.**
+- **With the 0.2.4 bootloader**, it checks the sketch's CRC and jumps to it
+  within a few milliseconds of power-on.
+- **With the SD menu bootloader** ([sd-menu.md](sd-menu.md)), power-on shows
+  the game menu. The sketch starts when it is picked, after an upload, or at
+  once when there is no card. It always starts from a real reset, never
+  from a jump out of the menu.
+- **USB** enumerates in the background while `setup()` runs.
 
 **`Serial` is native USB CDC:**
 - Writes to a port that no host has opened are dropped, never blocked, so a

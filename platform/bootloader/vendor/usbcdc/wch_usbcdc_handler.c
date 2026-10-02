@@ -1,0 +1,204 @@
+#include "wch_usbcdc_internal.h"
+
+volatile uint8_t  USB_SetupReq, USB_SetupTyp, USB_Config, USB_Addr, USB_ENUM_OK;
+volatile uint16_t USB_SetupLen;
+const uint8_t*    USB_pDescr;
+
+static inline void USB_EP_init(void) {
+  USBFSD->UEP0_DMA    = (uint32_t)wch_usbcdc_EP0_buffer;
+  USBFSD->UEP0_CTRL_H = USBFS_UEP_R_RES_ACK | USBFS_UEP_T_RES_NAK;
+  USBFSD->UEP0_TX_LEN = 0;
+
+  CDC_EP_init();
+
+  USB_ENUM_OK = 0;
+  USB_Config  = 0;
+  USB_Addr    = 0;
+}
+
+void USB_init(void) {
+    /* CHGAME: direct register writes rather than the vendor RCC_*ClockCmd()
+     * and GPIO_Init() helpers. Same effect; the helpers were only linked for
+     * these few lines, and dropping them saves ~350-480 B in every sketch that
+     * does not otherwise need them. */
+    RCC->APB2PCENR |= RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOC;
+    RCC->AHBPCENR  |= RCC_AHBPeriph_USBFS;
+    
+    // Wait for clocks to stabilize
+    for(volatile int i = 0; i < 5000; i++) __NOP();
+    
+    /* PC16 (USB D-) floating input, PC17 (USB D+) input with pull-up. Pins
+     * 16-23 are configured through CFGXR, one nibble per pin; floating input
+     * is 0x4 and pull-up/down input 0x8, with BSXR bit (pin - 16) selecting
+     * pull-up. Exactly what GPIO_Init() wrote for these two calls. */
+    GPIOC->CFGXR = (GPIOC->CFGXR & ~0xFFu) | 0x04u | (0x08u << 4);
+    GPIOC->BSXR  = 1u << 1;
+    
+    // Critical: Use CH32X035-specific AFIO macros (try both approaches)
+    // Approach 1: Try CH32X035 macro names
+    #ifdef UDP_PUE_MASK
+        // For 3.3V operation (standard)
+        AFIO->CTLR = (AFIO->CTLR & ~(UDP_PUE_MASK | UDM_PUE_MASK)) 
+                   | USB_PHY_V33 | UDP_PUE_1K5 | USB_IOEN;
+    #else
+        // Fallback to CH32X033 macro names
+        AFIO->CTLR = (AFIO->CTLR & ~(AFIO_CTLR_UDP_PUE | AFIO_CTLR_UDM_PUE))
+                   | AFIO_CTLR_USB_PHY_V33
+                   | AFIO_CTLR_UDP_PUE_1K5
+                   | AFIO_CTLR_USB_IOEN;
+    #endif
+    
+    // Long delay after PHY configuration
+    for(volatile int i = 0; i < 20000; i++) __NOP();
+
+    // Generate unique serial number from 96-bit UID before USB enumeration
+    generate_all_string_descriptors();
+
+    // Reset USB core completely
+    USBFSD->BASE_CTRL = 0x00;
+    for(volatile int i = 0; i < 5000; i++) __NOP();
+
+    // Initialize endpoints using your existing function
+    USB_EP_init();
+    
+    // Set device address and clear interrupts
+    USBFSD->DEV_ADDR = 0x00;
+    USBFSD->INT_FG = 0xff;
+    
+    // Configure USB device controller
+    USBFSD->UDEV_CTRL = USBFS_UD_PD_DIS | USBFS_UD_PORT_EN;
+    
+    /* Arm the interrupt BEFORE asserting the pull-up.
+     *
+     * The pull-up is what makes the device visible to the host, so enabling it
+     * first opened a window in which the host could begin talking to a device
+     * that had no handler installed to answer. That was survivable only because
+     * the host must debounce an attach for 100 ms before it issues a bus reset
+     * -- i.e. it worked by accident. Nothing requires this order. */
+    USBFSD->INT_EN = USBFS_UIE_SUSPEND | USBFS_UIE_BUS_RST | USBFS_UIE_TRANSFER;
+    NVIC_EnableIRQ(USBFS_IRQn);
+
+    /* Attach. From here the host may enumerate us at any time, entirely from
+     * USBFS_IRQHandler -- there is deliberately nothing left to wait for. The
+     * "very long delay for enumeration" that used to sit here spun ~15 ms for
+     * no reason: the main loop plays no part in enumeration, so the caller is
+     * free to go and run setup() while the ISR does the work. */
+    USBFSD->BASE_CTRL = USBFS_UC_DEV_PU_EN | USBFS_UC_INT_BUSY | USBFS_UC_DMA_EN;
+}
+
+void USB_EP0_copyDescr(uint8_t len) {
+  uint8_t* tgt = wch_usbcdc_EP0_buffer;
+  while(len--) *tgt++ = *USB_pDescr++;
+}
+
+static inline void USB_EP0_SETUP(void) {
+  uint8_t len = 0;
+  USB_SetupLen = ((uint16_t)USB_SetupBuf->wLengthH<<8) | (USB_SetupBuf->wLengthL);
+  USB_SetupReq = USB_SetupBuf->bRequest;
+  USB_SetupTyp = USB_SetupBuf->bRequestType;
+
+  if((USB_SetupTyp & 0x60) == 0x00) {
+    switch(USB_SetupReq) {
+      case 0x06: /* GET_DESCRIPTOR */
+        switch(USB_SetupBuf->wValueH) {
+          case USB_DESCR_TYP_DEVICE:
+            USB_pDescr = (const uint8_t*)&wch_usbcdc_DevDescr; len = sizeof(wch_usbcdc_DevDescr); break;
+          case USB_DESCR_TYP_CONFIG:
+            USB_pDescr = (const uint8_t*)&wch_usbcdc_CfgDescr; len = sizeof(wch_usbcdc_CfgDescr); break;
+          case USB_DESCR_TYP_STRING: {
+            switch(USB_SetupBuf->wValueL) {
+              case 0:   USB_pDescr = (const uint8_t*)&wch_usbcdc_LangDescr; break;
+              case 1:   USB_pDescr = (const uint8_t*)&wch_usbcdc_ManufDescr; break;
+              case 2:   USB_pDescr = (const uint8_t*)&wch_usbcdc_ProdDescr; break;
+              case 3:   USB_pDescr = (const uint8_t*)&wch_usbcdc_SerDescr; break;
+              case 4:   USB_pDescr = (const uint8_t*)&wch_usbcdc_InterfDescr; break;
+              default:  USB_pDescr = (const uint8_t*)&wch_usbcdc_SerDescr; break;
+            }
+            len = ((const uint8_t*)USB_pDescr)[0];
+            break;
+          }
+          default: len = 0xff; break;
+        }
+        if(len != 0xff) {
+          if(USB_SetupLen > len) USB_SetupLen = len;
+          len = USB_SetupLen >= WCH_USBCDC_EP0_SIZE ? WCH_USBCDC_EP0_SIZE : USB_SetupLen;
+          USB_EP0_copyDescr(len);
+        }
+        break;
+      case 0x05: /* SET_ADDRESS */
+        USB_Addr = USB_SetupBuf->wValueL; break;
+      case 0x08: /* GET_CONFIGURATION */
+        wch_usbcdc_EP0_buffer[0] = USB_Config; if(USB_SetupLen > 1) USB_SetupLen = 1; len = USB_SetupLen; break;
+      case 0x09: /* SET_CONFIGURATION */
+        USB_Config  = USB_SetupBuf->wValueL; USB_ENUM_OK = 1; break;
+      case 0x00: /* GET_STATUS */
+        wch_usbcdc_EP0_buffer[0] = 0x00; wch_usbcdc_EP0_buffer[1] = 0x00; if(USB_SetupLen > 2) USB_SetupLen = 2; len = USB_SetupLen; break;
+      default:
+        len = 0xff; break;
+    }
+  } else if((USB_SetupTyp & 0x60) == 0x20) {
+    len = CDC_control();
+  } else {
+    len = 0xff;
+  }
+
+  if(len == 0xff) {
+    USB_SetupReq = 0xff;
+    USBFSD->UEP0_CTRL_H = USBFS_UEP_T_TOG | USBFS_UEP_T_RES_STALL | USBFS_UEP_R_TOG | USBFS_UEP_R_RES_STALL;
+  } else {
+    USB_SetupLen -= len;
+    USBFSD->UEP0_TX_LEN = len;
+    USBFSD->UEP0_CTRL_H = USBFS_UEP_T_TOG | USBFS_UEP_T_RES_ACK | USBFS_UEP_R_TOG | USBFS_UEP_R_RES_ACK;
+  }
+}
+
+static inline void USB_EP0_IN(void) {
+  uint8_t len;
+  if((USB_SetupTyp & 0x60) == 0x20) { /* class */ return; }
+  switch(USB_SetupReq) {
+    case 0x06: /* GET_DESCRIPTOR */
+      len = USB_SetupLen >= WCH_USBCDC_EP0_SIZE ? WCH_USBCDC_EP0_SIZE : USB_SetupLen;
+      USB_EP0_copyDescr(len);
+      USB_SetupLen -= len;
+      USBFSD->UEP0_TX_LEN = len;
+      USBFSD->UEP0_CTRL_H ^= USBFS_UEP_T_TOG;
+      break;
+    case 0x05: /* SET_ADDRESS */
+      USBFSD->DEV_ADDR    = (USBFSD->DEV_ADDR & USBFS_UDA_GP_BIT) | USB_Addr;
+      USBFSD->UEP0_CTRL_H = USBFS_UEP_T_RES_NAK | USBFS_UEP_R_TOG | USBFS_UEP_R_RES_ACK;
+      break;
+    default:
+      USBFSD->UEP0_CTRL_H = USBFS_UEP_T_RES_NAK | USBFS_UEP_R_TOG | USBFS_UEP_R_RES_ACK;
+      break;
+  }
+}
+
+static inline void USB_EP0_OUT(void) {
+  if((USB_SetupTyp & 0x60) == 0x20) { CDC_EP0_OUT(); return; }
+  USBFSD->UEP0_CTRL_H = USBFS_UEP_T_TOG | USBFS_UEP_T_RES_ACK | USBFS_UEP_R_RES_ACK;
+}
+
+void USBFS_IRQHandler(void) __attribute__((interrupt));
+void USBFS_IRQHandler(void) {
+  uint8_t intflag = USBFSD->INT_FG;
+  uint8_t intst   = USBFSD->INT_ST;
+  if(intflag & USBFS_UIF_TRANSFER) {
+    uint8_t callIndex = intst & USBFS_UIS_ENDP_MASK;
+    switch(intst & USBFS_UIS_TOKEN_MASK) {
+      case USBFS_UIS_TOKEN_SETUP: USB_EP0_SETUP(); break;
+      case USBFS_UIS_TOKEN_IN:
+        switch(callIndex) { case 0: USB_EP0_IN(); break; case 2: CDC_EP2_IN(); break; default: break; }
+        break;
+      case USBFS_UIS_TOKEN_OUT:
+        switch(callIndex) { case 0: USB_EP0_OUT(); break; case 2: CDC_EP2_OUT(); break; default: break; }
+        break;
+    }
+    USBFSD->INT_FG = USBFS_UIF_TRANSFER;
+  }
+  if(intflag & USBFS_UIF_SUSPEND) { USBFSD->INT_FG = USBFS_UIF_SUSPEND; }
+  if(intflag & USBFS_UIF_BUS_RST) {
+    USB_EP_init();
+    USBFSD->DEV_ADDR = 0; USBFSD->INT_FG = 0xff;
+  }
+}
+

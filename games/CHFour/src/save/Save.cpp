@@ -16,7 +16,7 @@ bool load(Options &, Stats &, bool &hasGame) { hasGame = false; return false; }
 bool loadGame() { return false; }
 bool store(const Options &, const Stats &, bool) { return false; }
 #else
-static const uint32_t MAGIC = 0x47424843u;       // "CHF4"
+static const uint32_t MAGIC = 0x34464843u;       // "CHF4" (until 2026-10-01 0x47424843, CHBackgammon's "CHBG")
 static const uint8_t VERSION = 1;
 static const uint32_t PAGE = 256;
 static const uint32_t PAGE_A = 0xF500, PAGE_B = 0xF600;   // metadata page is 0xF700

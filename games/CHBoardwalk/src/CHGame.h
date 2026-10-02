@@ -9,7 +9,8 @@
 //   * nextFrame() uses a microsecond accumulator, so 60 fps is 60.0, not the
 //     62.5 that 1000/60 = 16 ms gave;
 //   * a lockstep mode lets the debug protocol step the game frame by frame;
-//   * auto-repeat for held buttons (menus, bet adjust).
+//   * auto-repeat for held buttons (menus, bet adjust);
+//   * holding START for 3 s leaves for the SD game menu (startExits).
 #pragma once
 #include <stdint.h>
 
@@ -25,6 +26,11 @@
 // Physical button mask, pressed = 1. Implemented per platform (device: GPIO
 // registers; simulator: the scripted input).
 uint8_t chgame_readButtons();
+
+// Leaves the game for the bootloader's game menu: a plain reset, with no boot
+// request (platform/bootloader/shared/chgame_bootreq.h). Under a bootloader
+// without the menu (0.2.4) the game simply starts again.
+[[noreturn]] void chgame_exitToMenu();
 
 class CHGame {
 public:
@@ -45,8 +51,12 @@ public:
 
     bool everyXFrames(uint16_t n) const  { return (frameCount % n) == 0; }
 
+    [[noreturn]] void exitToMenu()       { chgame_exitToMenu(); }
+
     uint32_t frameCount = 0;
     uint8_t  injected = 0;          // ORed into the physical buttons
+    bool     startExits = true;     // START held 3 s calls exitToMenu(); a game that
+                                    // needs a long START hold clears it in setup()
 #ifdef CHSIM
     int32_t  lockstep = 0;          // the simulator starts paused, driven by N
 #else

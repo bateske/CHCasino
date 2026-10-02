@@ -5,7 +5,7 @@ Agent-facing notes for continuing work here; rules, controls and build are in RE
 ## Snapshot
 
 - Imported from https://github.com/bateske/CHWordWheel at commit 7c97419 (2026-10-01); develop here now, not in the old repo.
-- Release build (FQBN `CHGame:ch32v:CHGame:opt=oslto,rtlib=nano,periph=game,usb=uploadonly`, core 0.2.4, CHGfx 1.3.0): flash 50,056 of 50,944 B (888 spare); the image (check_size's `image:` line, 256 B more) is 50,312 B, 120 B under the 50,432 B line that keeps both save pages, static RAM 15,244 of 18,416 B (3,172 spare). README's "50,408 of 50,432 bytes" is an older figure; trust check_size.
+- Release build (FQBN `CHGame:ch32v:CHGame:opt=oslto,rtlib=nano,periph=game,usb=uploadonly`, core 0.2.4, CHGfx 1.3.0): flash 50,092 of 50,944 B (852 spare); the image (check_size's `image:` line, 256 B more) is 50,348 B, 84 B under the 50,432 B line that keeps both save pages (2026-10-02, after the core's hold-START exit took 36 B), static RAM 15,244 of 18,416 B (3,172 spare). README's "50,408 of 50,432 bytes" is an older figure; trust check_size.
 - Puzzle banks: 111 built in (`FLASH_BYTES = 1376` in tools/phrases/build_bank.py), 606 on the card (sdcard/PHRASES.BNK, magic `WWPB`, version 1).
 - Verification: `python tools/check.py` (banks rebuilt, host tests incl. thousands of CPU episodes and both bank readers, every script twice with identical frames, card.txt with PHRASES.BNK in the simulator's slot, the redraw diff check over tools/scripts/diff, release build) passed as of 2026-10-01; not re-run since the import. The whole episode is playable in the simulator.
 - Never run on a board: first run at all, render times (simulator estimate 3-6 ms at the busiest), the wheel's feel, sounds, saving across a power cycle, and the SD reader.
@@ -28,7 +28,7 @@ Agent-facing notes for continuing work here; rules, controls and build are in RE
   - Panel lettering A (bold 5x7, double-struck text: `bold57` in src/render/Board.cpp; built) vs B (doubled 3x5).
   - Converging wedges (built, src/render/WheelStrip.cpp) vs flat wedges.
   - Built-in bank size trade: dropping the mystery/split/wild/prize wedges (~1.6 KB) or the 5x7 lettering via B (~0.85 KB) would each buy roughly 80-100 puzzles per KB.
-- The 120 B now under the two-page line could raise `FLASH_BYTES` a little (about 9 more built-in puzzles); the owner's call, alongside the trade above.
+- The 84 B now under the two-page line could raise `FLASH_BYTES` a little (about 6 more built-in puzzles); the owner's call, alongside the trade above.
 - Device bring-up: first run, render times, wheel feel, sounds (audition the WAVs from `python tools/audio/preview.py out/audio`), save across a power cycle, the SD reader incl. pulling the card mid-game. Device debug builds are `CHWW_LEAN` (no Setup/Options/Stats screens; set podiums with `W`; saving and the SD bank stay) and write save pages only after `say E 1`. Put the release build back afterwards.
 - Grow tools/phrases/phrases.txt toward thousands of puzzles (the card bank has room; 64 B a puzzle).
 
